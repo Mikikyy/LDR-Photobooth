@@ -23,9 +23,9 @@
     .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
     .btn:disabled { background: #ffa4ac; opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
     
-    select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; }
+    input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; text-align: center; }
 
-    .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
+    .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
     video, .partner-preview { width: 320px; height: 240px; background: #222; border-radius: 15px; object-fit: cover; }
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
 
@@ -39,18 +39,38 @@
     .sticker-palette span:hover { transform: scale(1.3); }
 
     .draggable-sticker { position: absolute; font-size: 35px; cursor: move; user-select: none; }
+    .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
+    .online { background: #e3fcce; color: #2ecc71; }
+    .waiting { background: #ffeaa7; color: #d63031; }
   </style>
 </head>
 <body>
 
   <h1>📷 LDR Photobooth</h1>
 
-  <!-- STEP 1 -->
-  <div id="step1" class="step-section active">
-    <h2>1. เลือกธีมและจำนวนช่องถ่ายรูป</h2>
-    <p>การเลือกของคุณจะซิงก์ไปยังแฟนแบบ Real-time</p>
-    
+  <!-- STEP 0: สร้าง/เข้าร่วมห้อง -->
+  <div id="step0" class="step-section active">
+    <h2>เข้าใช้งานตู้ถ่ายรูปคู่</h2>
+    <p>สร้างห้องใหม่ หรือกรอกรหัสห้องเพื่อถ่ายรูปกับแฟน</p>
     <div>
+      <button class="btn" onclick="createRoom()">✨ สร้างห้องถ่ายรูปใหม่</button>
+    </div>
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+    <div>
+      <input type="text" id="roomInput" placeholder="กรอกรหัสห้อง (เช่น 1234)">
+      <button class="btn" style="background: #2ed573;" onclick="joinCustomRoom()">เข้าร่วมห้อง</button>
+    </div>
+  </div>
+
+  <!-- STEP 1: ตั้งค่าห้อง -->
+  <div id="step1" class="step-section">
+    <h2>1. เลือกธีมและจำนวนช่องถ่ายรูป</h2>
+    <div id="roomStatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)</div>
+    <br>
+    <p><b>ลิงก์ห้องของคุณ:</b> <span id="shareLink" style="color: #ff4757; font-weight: bold;"></span></p>
+    <button class="btn" style="background: #70a1ff; padding: 6px 15px; font-size: 14px;" onclick="copyLink()">📋 คัดลอกลิงก์ส่งให้แฟน</button>
+    
+    <div style="margin-top: 20px;">
       <label><b>เลือกจำนวนช่อง:</b></label>
       <select id="slotSelect" onchange="syncConfig()">
         <option value="3">3 ช่อง (ถ่ายคนละ 3 รูป)</option>
@@ -70,10 +90,10 @@
     </div>
 
     <br>
-    <button class="btn" onclick="goToStep2()">พร้อมถ่ายรูปแล้ว!</button>
+    <button id="startBtn" class="btn" onclick="goToStep2()" disabled>รอแฟนเข้าห้องก่อนนะ...</button>
   </div>
 
-  <!-- STEP 2 -->
+  <!-- STEP 2: ถ่ายรูป -->
   <div id="step2" class="step-section">
     <h2>2. เตรียมตัวถ่ายรูป</h2>
     <div class="camera-container">
@@ -83,7 +103,7 @@
       </div>
       <div>
         <h3>แฟน</h3>
-        <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Partner..." />
+        <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Photo..." />
       </div>
     </div>
 
@@ -93,10 +113,10 @@
     <button id="snapBtn" class="btn" onclick="triggerSnap()">📸 กดถ่ายรูป (ใครกดก็ได้)</button>
   </div>
 
-  <!-- STEP 3 -->
+  <!-- STEP 3: ตกแต่ง & ดาวน์โหลด -->
   <div id="step3" class="step-section">
     <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
-    <p>คลิกสติ๊กเกอร์เพื่อเพิ่มลงในรูปภาพ และลากวางตามตำแหน่งที่ต้องการได้เลย!</p>
+    <p>ลากวางสติ๊กเกอร์ตกแต่งรูปคู่ได้ตามใจชอบเลย!</p>
 
     <div class="sticker-palette">
       <span onclick="addSticker('❤️')">❤️</span>
@@ -119,8 +139,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const roomId = "ldr-room-demo";
-    
+    let roomId = "";
     let totalSlots = 3;
     let selectedTheme = "theme-pastel";
     let myPhotos = [];
@@ -131,8 +150,59 @@
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
-    socket.emit('join-room', roomId);
-    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { myVideo.srcObject = stream; }).catch(err => console.log(err));
+    // เช็ก URL ว่ามี room id แนบมาไหม (กรณีแฟนกดลิงก์เข้ามา)
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    if (roomParam) {
+      joinRoom(roomParam);
+    }
+
+    function createRoom() {
+      const randomRoom = Math.floor(1000 + Math.random() * 9000).toString();
+      joinRoom(randomRoom);
+    }
+
+    function joinCustomRoom() {
+      const input = document.getElementById('roomInput').value.trim();
+      if (input) joinRoom(input);
+    }
+
+    function joinRoom(id) {
+      roomId = id;
+      socket.emit('join-room', roomId);
+      
+      const fullLink = `${window.location.origin}/?room=${roomId}`;
+      document.getElementById('shareLink').innerText = fullLink;
+      
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { myVideo.srcObject = stream; })
+        .catch(err => console.log(err));
+
+      switchStep('step1');
+    }
+
+    function copyLink() {
+      const linkText = document.getElementById('shareLink').innerText;
+      navigator.clipboard.writeText(linkText);
+      alert("คัดลอกลิงก์ห้องแล้ว! ส่งให้แฟนกดเข้าลิงก์นี้ได้เลยครับ");
+    }
+
+    socket.on('room-status', (data) => {
+      const badge = document.getElementById('roomStatusBadge');
+      const startBtn = document.getElementById('startBtn');
+      
+      if (data.userCount >= 2) {
+        badge.className = "status-badge online";
+        badge.innerText = "🟢 แฟนเข้ามาในห้องแล้ว! (พร้อมถ่าย)";
+        startBtn.disabled = false;
+        startBtn.innerText = "พร้อมถ่ายรูปแล้ว! ➡️";
+      } else {
+        badge.className = "status-badge waiting";
+        badge.innerText = "⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)";
+        startBtn.disabled = true;
+        startBtn.innerText = "รอแฟนเข้าห้องก่อนนะ...";
+      }
+    });
 
     function syncConfig() {
       const config = {
@@ -149,13 +219,8 @@
       document.getElementById('themeSelect').value = config.theme;
     });
 
-    function goToStep2() {
-      switchStep('step2');
-    }
-
-    function triggerSnap() {
-      socket.emit('start-countdown');
-    }
+    function goToStep2() { switchStep('step2'); }
+    function triggerSnap() { socket.emit('start-countdown'); }
 
     socket.on('trigger-countdown', () => {
       snapBtn.disabled = true;
@@ -241,7 +306,6 @@
       sticker.innerText = emoji;
       sticker.style.left = '50%';
       sticker.style.top = '50%';
-      
       makeDraggable(sticker);
       document.getElementById('frameCanvasContainer').appendChild(sticker);
     }
