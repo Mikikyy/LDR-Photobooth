@@ -167,336 +167,43 @@ video { transform: scaleX(-1); } /* กลับด้านกล้องต�
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    let currentRoomId = "";
-    let totalSlots = 3;
-    let selectedTheme = "theme-pastel";
-    let myPhotos = [];
-    let partnerPhotos = [];
-    let currentSlot = 0;
-    let streamInterval = null;
+   // ส่งภาพกล้องสด Real-Time ไปให้อีกฝ่าย (แก้ปัญหาสัดส่วนภาพยืดตั้งแต่ต้นทาง)
+function startLiveStreaming() {
+  if (streamInterval) clearInterval(streamInterval);
+  const tempCanvas = document.createElement('canvas');
+  const targetW = 320;
+  const targetH = 240;
+  tempCanvas.width = targetW;
+  tempCanvas.height = targetH;
+  const ctx = tempCanvas.getContext('2d');
 
-    const myVideo = document.getElementById('myVideo');
-    const partnerImg = document.getElementById('partnerImg');
-    const snapBtn = document.getElementById('snapBtn');
-    const countdownEl = document.getElementById('countdown');
-
-    window.onload = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const roomParam = urlParams.get('room');
-      if (roomParam && roomParam.length === 4) {
-        joinRoom(roomParam);
-      }
-    };
-
-    function createRoom() {
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
-      joinRoom(code);
-    }
-
-    function joinCustomRoom() {
-      const code = document.getElementById('roomInput').value.trim();
-      if (code.length === 4) {
-        joinRoom(code);
-      } else {
-        alert("กรุณากรอกรหัสห้อง 4 หลักให้ถูกต้องครับ");
-      }
-    }
-
-    function joinRoom(id) {
-      currentRoomId = id;
-      document.getElementById('roomDisplay').innerText = currentRoomId;
-      socket.emit('join-room', currentRoomId);
+  streamInterval = setInterval(() => {
+    if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA) {
+      const vW = myVideo.videoWidth;
+      const vH = myVideo.videoHeight;
       
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => { 
-          myVideo.srcObject = stream;
-          startLiveStreaming();
-        })
-        .catch(err => console.log("Camera error:", err));
-    }
+      // คำนวณสัดส่วน object-fit: cover ลงบน Canvas ก่อนส่ง
+      const aspect = vW / vH;
+      const targetAspect = targetW / targetH;
+      let sW, sH, sX, sY;
 
-    // ส่งภาพกล้องวิดีโอสด Real-time ไปให้อีกฝ่าย
-    function startLiveStreaming() {
-      if (streamInterval) clearInterval(streamInterval);
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 240;
-      tempCanvas.height = 180;
-      const ctx = tempCanvas.getContext('2d');
-
-      streamInterval = setInterval(() => {
-        if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA) {
-          ctx.drawImage(myVideo, 0, 0, 240, 180);
-          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.4));
-        }
-      }, 150); // ส่งทุกๆ 150ms เพื่อความลื่นไหล
-    }
-
-    socket.on('receive-partner-stream', (frameData) => {
-      partnerImg.src = frameData;
-    });
-
-    function copyLink() {
-      const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
-      navigator.clipboard.writeText(fullUrl);
-      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าหน้าถ่ายรูปทันทีครับ`);
-    }
-
-    socket.on('room-status', (data) => {
-      const badge1 = document.getElementById('roomStatusBadge');
-      const badge2 = document.getElementById('step2StatusBadge');
-      const count = data.userCount;
-      
-      const text = count >= 2 ? `🟢 แฟนอยู่ในห้องแล้ว! (${count}/2 คน)` : `⏳ กำลังรอแฟน... (${count}/2 คน)`;
-      const className = count >= 2 ? "status-badge online" : "status-badge waiting";
-
-      badge1.className = className; badge1.innerText = text;
-      badge2.className = className; badge2.innerText = text;
-
-      if (data.config) {
-        totalSlots = data.config.slots;
-        selectedTheme = data.config.theme;
-        if (data.config.currentStep && data.config.currentStep !== 'step0') {
-          renderStep(data.config.currentStep);
-        }
-      }
-    });
-
-    function selectTheme(themeName) {
-      selectedTheme = themeName;
-      document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
-      document.querySelector(`.${themeName}`)?.classList.add('selected');
-      syncConfig();
-    }
-
-    function syncConfig() {
-      const config = {
-        slots: parseInt(document.getElementById('slotSelect').value),
-        theme: selectedTheme
-      };
-      socket.emit('update-config', config);
-    }
-
-    socket.on('config-updated', (config) => {
-      totalSlots = config.slots;
-      selectedTheme = config.theme;
-    });
-
-    function requestGoToStep2() { 
-      socket.emit('change-step', 'step2');
-    }
-
-    socket.on('navigate-to-step', (stepId) => {
-      renderStep(stepId);
-    });
-
-    function triggerSnap() { socket.emit('start-countdown'); }
-
-    socket.on('trigger-countdown', () => {
-      snapBtn.disabled = true;
-      snapBtn.innerText = "⏳ กำลังถ่ายรูป...";
-      myPhotos = []; partnerPhotos = []; currentSlot = 0;
-      captureSequence();
-    });
-
-    function captureSequence() {
-      if (currentSlot < totalSlots) {
-        document.getElementById('slotProgress').innerText = `รูปที่ ${currentSlot + 1} / ${totalSlots}`;
-        let count = 3;
-        countdownEl.innerText = count;
-
-        const timer = setInterval(() => {
-          count--;
-          if (count > 0) {
-            countdownEl.innerText = count;
-          } else {
-            clearInterval(timer);
-            countdownEl.innerText = "CHEESE! 📸";
-            
-            myPhotos.push(captureFrame());
-            currentSlot++;
-            setTimeout(captureSequence, 1500);
-          }
-        }, 1000);
+      if (aspect > targetAspect) {
+        sH = vH;
+        sW = vH * targetAspect;
+        sX = (vW - sW) / 2;
+        sY = 0;
       } else {
-        countdownEl.innerText = "เรียบร้อย! ✨";
-        socket.emit('send-photos', myPhotos);
-        checkAndComplete();
-      }
-    }
-
-    function captureFrame() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 340; canvas.height = 250;
-      const ctx = canvas.getContext('2d');
-      // กลับด้านกล้องตัวเองให้เหมือนกระจกตอนเซฟรูป
-      ctx.translate(340, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(myVideo, 0, 0, 340, 250);
-      return canvas.toDataURL('image/jpeg', 0.7);
-    }
-
-    socket.on('receive-partner-photos', (photos) => {
-      partnerPhotos = photos;
-      checkAndComplete();
-    });
-
-    function checkAndComplete() {
-      if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
-        renderPhotostrip();
-        renderStep('step3');
-        makeElementSmoothDraggable(document.getElementById('frameText'), 'text');
-      }
-    }
-
-    function renderPhotostrip() {
-      const container = document.getElementById('frameCanvasContainer');
-      const grid = document.getElementById('photoGrid');
-      container.className = selectedTheme;
-      grid.innerHTML = "";
-
-      for (let i = 0; i < totalSlots; i++) {
-        const row = document.createElement('div');
-        row.className = "photo-row";
-
-        const imgMine = document.createElement('img');
-        imgMine.src = myPhotos[i];
-
-        const imgPartner = document.createElement('img');
-        imgPartner.src = partnerPhotos[i];
-
-        row.appendChild(imgMine);
-        row.appendChild(imgPartner);
-        grid.appendChild(row);
-      }
-    }
-
-    // เพิ่มสติ๊กเกอร์
-    function sendSticker(emoji) {
-      const id = 'sticker_' + Math.random().toString(36).substr(2, 9);
-      socket.emit('add-sticker', { id, emoji, left: '40%', top: '40%' });
-    }
-
-    socket.on('sticker-added', (data) => {
-      const sticker = document.createElement('div');
-      sticker.id = data.id;
-      sticker.className = 'draggable-element draggable-sticker';
-      sticker.innerText = data.emoji;
-      sticker.style.left = data.left;
-      sticker.style.top = data.top;
-      document.getElementById('frameCanvasContainer').appendChild(sticker);
-      makeElementSmoothDraggable(sticker, 'sticker');
-    });
-
-    // ปรับแต่งข้อความ & ฟอนต์
-    function sendTextChange(val) {
-      socket.emit('update-frame-text', val);
-    }
-    socket.on('frame-text-updated', (text) => {
-      document.getElementById('frameText').innerText = text || "Distance means so little ❤️";
-    });
-
-    function changeFont(fontClass) {
-      socket.emit('update-font-style', fontClass);
-    }
-    socket.on('font-style-updated', (fontClass) => {
-      const el = document.getElementById('frameText');
-      el.className = `draggable-element draggable-text ${fontClass}`;
-      document.getElementById('fontSelect').value = fontClass;
-    });
-
-    // ระบบลากวางแบบลื่นไหล (Smooth Drag & Drop ไร้อาการกระตุก)
-    function makeElementSmoothDraggable(elmnt, type) {
-      let isDragging = false;
-      let startX, startY, initialLeft, initialTop;
-
-      elmnt.addEventListener('mousedown', startDrag);
-      elmnt.addEventListener('touchstart', startDrag, { passive: false });
-
-      function startDrag(e) {
-        isDragging = true;
-        const event = e.touches ? e.touches[0] : e;
-        startX = event.clientX;
-        startY = event.clientY;
-        initialLeft = elmnt.offsetLeft;
-        initialTop = elmnt.offsetTop;
-
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('touchmove', drag, { passive: false });
-        document.addEventListener('mouseup', stopDrag);
-        document.addEventListener('touchend', stopDrag);
+        sW = vW;
+        sH = vW / targetAspect;
+        sX = 0;
+        sY = (vH - sH) / 2;
       }
 
-      function drag(e) {
-        if (!isDragging) return;
-        e.preventDefault();
-        const event = e.touches ? e.touches[0] : e;
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
-
-        const newLeft = (initialLeft + dx) + 'px';
-        const newTop = (initialTop + dy) + 'px';
-
-        elmnt.style.left = newLeft;
-        elmnt.style.top = newTop;
-
-        if (type === 'sticker') {
-          socket.emit('update-sticker-pos', { id: elmnt.id, left: newLeft, top: newTop });
-        } else if (type === 'text') {
-          socket.emit('update-text-pos', { left: newLeft, top: newTop });
-        }
-      }
-
-      function stopDrag() {
-        isDragging = false;
-        document.removeEventListener('mousemove', drag);
-        document.removeEventListener('touchmove', drag);
-        document.removeEventListener('mouseup', stopDrag);
-        document.removeEventListener('touchend', stopDrag);
-      }
+      ctx.drawImage(myVideo, sX, sY, sW, sH, 0, 0, targetW, targetH);
+      socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.5));
     }
-
-    socket.on('sticker-moved', (data) => {
-      const el = document.getElementById(data.id);
-      if (el) {
-        el.style.left = data.left;
-        el.style.top = data.top;
-      }
-    });
-
-    socket.on('text-pos-moved', (pos) => {
-      const el = document.getElementById('frameText');
-      if (el) {
-        el.style.left = pos.left;
-        el.style.top = pos.top;
-      }
-    });
-
-    function exportImage(format) {
-      const element = document.getElementById('frameCanvasContainer');
-      html2canvas(element, { scale: 2 }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `LDR-Photobooth.${format}`;
-        link.href = canvas.toDataURL('image/jpeg', 0.95);
-        link.click();
-      });
-    }
-
-    function exportPDF() {
-      const element = document.getElementById('frameCanvasContainer');
-      html2canvas(element, { scale: 2 }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.addImage(imgData, 'PNG', 15, 15, 180, 0);
-        pdf.save('LDR-Photobooth.pdf');
-      });
-    }
-
-    function renderStep(stepId) {
-      document.querySelectorAll('.step-section').forEach(el => el.classList.remove('active'));
-      document.getElementById(stepId).classList.add('active');
-    }
+  }, 120); // ปรับรอบส่งภาพให้ภาพลื่นขึ้น
+}
   </script>
 </body>
 </html>
