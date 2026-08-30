@@ -8,8 +8,8 @@ const server = http.createServer(app);
 
 const io = new Server(server, { 
   maxHttpBufferSize: 1e7,
-  pingTimeout: 10000,
-  pingInterval: 5000
+  pingTimeout: 30000,
+  pingInterval: 10000
 });
 
 app.use(express.static(__dirname));
@@ -22,18 +22,16 @@ const roomConfigs = {};
 
 io.on('connection', (socket) => {
 
-  // ฟังก์ชันกระจายสถานะห้องให้ทุกคนในห้องรับรู้พร้อมกัน
-  const sendRoomStatus = (roomId) => {
+  const updateRoomState = (roomId) => {
     const room = io.sockets.adapter.rooms.get(roomId);
     const userCount = room ? room.size : 0;
 
-    // อัปเดตจำนวนคนให้ทุกคนในห้อง
     io.to(roomId).emit('room-status', { 
       userCount: userCount, 
       config: roomConfigs[roomId] 
     });
 
-    // 🚀 ถ้าคนครบ 2 คนแล้ว และยังอยู่ที่ step1 ให้สั่งพาเด้งไป step2 พร้อมกันอัตโนมัติ
+    // เมื่อเข้าครบ 2 คน เปลี่ยนไปหน้า Step 2 พร้อมกันทันที
     if (userCount >= 2 && roomConfigs[roomId] && roomConfigs[roomId].currentStep === 'step1') {
       roomConfigs[roomId].currentStep = 'step2';
       io.to(roomId).emit('navigate-to-step', 'step2');
@@ -52,10 +50,10 @@ io.on('connection', (socket) => {
       roomConfigs[roomId] = { slots: 3, theme: 'theme-pastel', currentStep: 'step1' };
     }
 
-    sendRoomStatus(roomId);
+    updateRoomState(roomId);
   });
 
-  // ส่งสตรีมภาพกล้องให้แฟนแบบ Real-time
+  // ส่งสตรีมภาพกล้องให้แฟน
   socket.on('stream-frame', (frameData) => {
     if (socket.roomId) {
       socket.to(socket.roomId).emit('receive-partner-stream', frameData);
@@ -97,10 +95,10 @@ io.on('connection', (socket) => {
     if (socket.roomId) io.to(socket.roomId).emit('frame-text-updated', text);
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnecting', () => {
     if (socket.roomId) {
-      const roomToUpdate = socket.roomId;
-      setTimeout(() => sendRoomStatus(roomToUpdate), 500);
+      const roomId = socket.roomId;
+      setTimeout(() => updateRoomState(roomId), 300);
     }
   });
 });
