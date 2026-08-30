@@ -160,7 +160,6 @@
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
-    // ตรวจสอบ query string ใน URL
     window.addEventListener('load', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('room');
@@ -171,7 +170,6 @@
 
     function createRoom() {
       const randomRoom = Math.floor(1000 + Math.random() * 9000).toString();
-      // อัปเดต URL เพื่อให้คัดลอกง่าย
       window.history.pushState({}, '', `?room=${randomRoom}`);
       joinRoom(randomRoom);
     }
@@ -193,10 +191,14 @@
       
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => { myVideo.srcObject = stream; })
-        .catch(err => console.log("Camera access denied:", err));
+        .catch(err => console.log("Camera error:", err));
 
-      // ย้ายทั้ง 2 ฝั่งเข้า Step 1
       renderStep('step1');
+
+      // เช็กสถานะห้องซ้ำทุกๆ 2 วินาทีเพื่อให้แน่ใจว่าทั้งคู่ซิงก์กันเสมอ
+      setInterval(() => {
+        if(roomId) socket.emit('check-status');
+      }, 2000);
     }
 
     function copyLink() {
@@ -205,7 +207,6 @@
       alert("คัดลอกลิงก์ห้องแล้ว! ส่งให้แฟนกดเข้าลิงก์นี้ได้เลยครับ");
     }
 
-    // ซิงก์จำนวนคนที่เข้าห้องแบบ real-time ล็อกปุ่มถ้ารายชื่อไม่ครบ 2 คน
     socket.on('room-status', (data) => {
       const badge = document.getElementById('roomStatusBadge');
       const startBtn = document.getElementById('startBtn');
@@ -246,7 +247,6 @@
       document.querySelector(`.${config.theme}`)?.classList.add('selected');
     });
 
-    // แจ้งเตือนเซิร์ฟเวอร์ให้เปลี่ยน step พร้อมกันทั้งสองเครื่อง
     function requestGoToStep2() { 
       socket.emit('change-step', 'step2');
     }
