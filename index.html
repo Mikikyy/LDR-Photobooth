@@ -85,7 +85,6 @@
       </select>
     </div>
 
-    <!-- 2. แก้ปัญหา Theme Preview ให้เห็นสีชัดเจน -->
     <div>
       <label><b>เลือก Theme กรอบรูป:</b></label>
       <div class="theme-options">
@@ -97,7 +96,7 @@
     </div>
 
     <br>
-    <button id="startBtn" class="btn" onclick="goToStep2()" disabled>รอแฟนเข้าห้องก่อนนะ...</button>
+    <button id="startBtn" class="btn" onclick="requestGoToStep2()" disabled>รอแฟนเข้าห้องก่อนนะ...</button>
   </div>
 
   <!-- STEP 2 -->
@@ -120,7 +119,7 @@
     <button id="snapBtn" class="btn" onclick="triggerSnap()">📸 กดถ่ายรูป (ใครกดก็ได้)</button>
   </div>
 
-  <!-- STEP 3: ตกแต่ง real-time & ดาวน์โหลด -->
+  <!-- STEP 3 -->
   <div id="step3" class="step-section">
     <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
     <p>คลิกเลือกสติ๊กเกอร์ หรือพิมพ์ข้อความ ซึ่งจะขึ้นสดๆ บนหน้าจอทั้ง 2 ฝ่าย!</p>
@@ -161,20 +160,28 @@
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
-    if (roomParam) {
-      joinRoom(roomParam);
-    }
+    // ตรวจสอบ query string ใน URL
+    window.addEventListener('load', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      if (roomParam) {
+        joinRoom(roomParam);
+      }
+    });
 
     function createRoom() {
       const randomRoom = Math.floor(1000 + Math.random() * 9000).toString();
+      // อัปเดต URL เพื่อให้คัดลอกง่าย
+      window.history.pushState({}, '', `?room=${randomRoom}`);
       joinRoom(randomRoom);
     }
 
     function joinCustomRoom() {
       const input = document.getElementById('roomInput').value.trim();
-      if (input) joinRoom(input);
+      if (input) {
+        window.history.pushState({}, '', `?room=${input}`);
+        joinRoom(input);
+      }
     }
 
     function joinRoom(id) {
@@ -186,9 +193,10 @@
       
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => { myVideo.srcObject = stream; })
-        .catch(err => console.log(err));
+        .catch(err => console.log("Camera access denied:", err));
 
-      switchStep('step1');
+      // ย้ายทั้ง 2 ฝั่งเข้า Step 1
+      renderStep('step1');
     }
 
     function copyLink() {
@@ -197,19 +205,19 @@
       alert("คัดลอกลิงก์ห้องแล้ว! ส่งให้แฟนกดเข้าลิงก์นี้ได้เลยครับ");
     }
 
-    // 1. แก้ปัญหาอีกคนเข้าห้องแล้วไม่ขึ้นเตือน
+    // ซิงก์จำนวนคนที่เข้าห้องแบบ real-time ล็อกปุ่มถ้ารายชื่อไม่ครบ 2 คน
     socket.on('room-status', (data) => {
       const badge = document.getElementById('roomStatusBadge');
       const startBtn = document.getElementById('startBtn');
       
       if (data.userCount >= 2) {
         badge.className = "status-badge online";
-        badge.innerText = "🟢 แฟนเข้ามาในห้องแล้ว! (พร้อมถ่าย)";
+        badge.innerText = `🟢 แฟนเข้ามาในห้องแล้ว! (${data.userCount}/2 คน)`;
         startBtn.disabled = false;
         startBtn.innerText = "พร้อมถ่ายรูปแล้ว! ➡️";
       } else {
         badge.className = "status-badge waiting";
-        badge.innerText = "⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)";
+        badge.innerText = `⏳ กำลังรอแฟนเข้าห้อง... (${data.userCount}/2 คน)`;
         startBtn.disabled = true;
         startBtn.innerText = "รอแฟนเข้าห้องก่อนนะ...";
       }
@@ -218,7 +226,7 @@
     function selectTheme(themeName) {
       selectedTheme = themeName;
       document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
-      document.querySelector(`.${themeName}`).classList.add('selected');
+      document.querySelector(`.${themeName}`)?.classList.add('selected');
       syncConfig();
     }
 
@@ -238,7 +246,15 @@
       document.querySelector(`.${config.theme}`)?.classList.add('selected');
     });
 
-    function goToStep2() { switchStep('step2'); }
+    // แจ้งเตือนเซิร์ฟเวอร์ให้เปลี่ยน step พร้อมกันทั้งสองเครื่อง
+    function requestGoToStep2() { 
+      socket.emit('change-step', 'step2');
+    }
+
+    socket.on('navigate-to-step', (stepId) => {
+      renderStep(stepId);
+    });
+
     function triggerSnap() { socket.emit('start-countdown'); }
 
     socket.on('trigger-countdown', () => {
@@ -290,11 +306,10 @@
       checkAndComplete();
     });
 
-    // 3. ย้ายไปหน้าแต่งรูปและเซฟไฟล์อัตโนมัติเมื่อถ่ายเสร็จทั้งสองฝ่าย
     function checkAndComplete() {
       if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
         renderPhotostrip();
-        switchStep('step3');
+        renderStep('step3');
       }
     }
 
@@ -320,7 +335,6 @@
       }
     }
 
-    // ระบบซิงก์ตกแต่งสติ๊กเกอร์และข้อความ real-time
     function sendSticker(emoji) {
       const id = 'sticker_' + Math.random().toString(36).substr(2, 9);
       socket.emit('add-sticker', { id, emoji, left: '45%', top: '40%' });
@@ -351,8 +365,8 @@
       elmnt.ontouchstart = dragMouseDown;
 
       function dragMouseDown(e) {
-        const clientX = e.clientX || e.touches[0].clientX;
-        const clientY = e.clientY || e.touches[0].clientY;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
         pos3 = clientX;
         pos4 = clientY;
         document.onmouseup = closeDragElement;
@@ -362,8 +376,8 @@
       }
 
       function elementDrag(e) {
-        const clientX = e.clientX || e.touches[0].clientX;
-        const clientY = e.clientY || e.touches[0].clientY;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
         pos1 = pos3 - clientX;
         pos2 = pos4 - clientY;
         pos3 = clientX;
@@ -413,7 +427,7 @@
       });
     }
 
-    function switchStep(stepId) {
+    function renderStep(stepId) {
       document.querySelectorAll('.step-section').forEach(el => el.classList.remove('active'));
       document.getElementById(stepId).classList.add('active');
     }
