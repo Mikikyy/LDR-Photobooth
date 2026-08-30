@@ -32,7 +32,6 @@
     .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
     video, .partner-preview { width: 320px; height: 240px; background: #222; border-radius: 15px; object-fit: cover; }
     video { transform: scaleX(-1); }
-    .partner-preview { transform: none; }
 
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
 
@@ -99,7 +98,6 @@
     </div>
 
     <br>
-    <!-- ปรับปุ่มให้พิการไว้ก่อน และจะเด้งไปอัตโนมัติเมื่อแฟนเข้ามา -->
     <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
   </div>
 
@@ -115,7 +113,7 @@
       </div>
       <div>
         <h3>แฟน</h3>
-        <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Partner..." />
+        <img id="partnerImg" class="partner-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='240' viewBox='0 0 320 240'><rect width='100%' height='100%' fill='%23222222'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-size='16'>Waiting for partner...</text></svg>" />
       </div>
     </div>
 
@@ -162,6 +160,7 @@
     let partnerPhotos = [];
     let currentSlot = 0;
     let streamInterval = null;
+    let isSendingFrame = false;
 
     const myVideo = document.getElementById('myVideo');
     const partnerImg = document.getElementById('partnerImg');
@@ -179,8 +178,6 @@
     socket.on('connect', () => {
       if (currentRoomId) {
         socket.emit('join-room', currentRoomId);
-      } else {
-        checkUrlRoom();
       }
     });
 
@@ -208,16 +205,13 @@
       document.getElementById('roomDisplay').innerText = currentRoomId;
       renderStep('step1');
 
-      if (socket.connected) {
-        socket.emit('join-room', currentRoomId);
-      }
-      
+      socket.emit('join-room', currentRoomId);
       initCamera();
     }
 
     function initCamera() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
+        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 } } })
           .then(stream => { 
             myVideo.srcObject = stream;
             startLiveStreaming();
@@ -229,16 +223,19 @@
     function startLiveStreaming() {
       if (streamInterval) clearInterval(streamInterval);
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 320;
-      tempCanvas.height = 240;
+      tempCanvas.width = 240;
+      tempCanvas.height = 180;
       const ctx = tempCanvas.getContext('2d');
 
+      // ส่งภาพเฟรมกล้องทุกๆ 200ms เพื่อป้องกัน Socket รับภาระหนักเกินไปจนหลุด
       streamInterval = setInterval(() => {
-        if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA) {
-          ctx.drawImage(myVideo, 0, 0, 320, 240);
-          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.4));
+        if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
+          isSendingFrame = true;
+          ctx.drawImage(myVideo, 0, 0, 240, 180);
+          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.3));
+          setTimeout(() => { isSendingFrame = false; }, 150);
         }
-      }, 120);
+      }, 200);
     }
 
     socket.on('receive-partner-stream', (frameData) => {
@@ -248,10 +245,9 @@
     function copyLink() {
       const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
       navigator.clipboard.writeText(fullUrl);
-      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเด้งเข้าห้องถ่ายรูปทันทีครับ`);
+      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าห้องถ่ายรูปกับคุณทันทีครับ`);
     }
 
-    // รับสถานะจาก Server และอัปเดตหน้าจอทั้ง 2 ฝ่าย
     socket.on('room-status', (data) => {
       const badge1 = document.getElementById('roomStatusBadge');
       const badge2 = document.getElementById('step2StatusBadge');
