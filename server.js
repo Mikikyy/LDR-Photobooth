@@ -16,6 +16,7 @@ app.get('/', (req, res) => {
 const rooms = {};
 
 io.on('connection', (socket) => {
+  
   socket.on('join-room', (roomId) => {
     socket.join(roomId);
     socket.roomId = roomId;
@@ -35,8 +36,13 @@ io.on('connection', (socket) => {
 
     const userCount = rooms[roomId].users.length;
     
-    // แจ้งสถานะผู้ใช้งานในห้องให้ทุกคนในห้องทราบ real-time
+    // ส่งข้อมูลอัปเดตจำนวนคนในห้องให้ทุกคนในห้องทราบ real-time
     io.to(roomId).emit('room-status', { userCount, config: rooms[roomId].config });
+
+    // ย้ายหน้าจอพร้อมกันทั้ง 2 ฝั่ง
+    socket.on('change-step', (stepId) => {
+      io.to(roomId).emit('navigate-to-step', stepId);
+    });
 
     socket.on('update-config', (config) => {
       rooms[roomId].config = config;
@@ -51,7 +57,6 @@ io.on('connection', (socket) => {
       socket.to(roomId).emit('receive-partner-photos', photos);
     });
 
-    // ซิงก์การตกแต่งสติ๊กเกอร์ real-time
     socket.on('add-sticker', (stickerData) => {
       if (rooms[roomId]) {
         rooms[roomId].stickers.push(stickerData);
@@ -63,7 +68,6 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('sticker-moved', data);
     });
 
-    // ซิงก์การพิมพ์ข้อความท้ายกรอบรูป real-time
     socket.on('update-frame-text', (text) => {
       if (rooms[roomId]) {
         rooms[roomId].customText = text;
