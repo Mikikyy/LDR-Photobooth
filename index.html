@@ -7,9 +7,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
+  <!-- Google Fonts สำหรับเปลี่ยนสไตล์ตัวอักษร -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Charm:wght@700&family=Itim&family=Mali:ital,wght@0,500;1,500&family=Prompt:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
-    * { box-sizing: border-box; font-family: sans-serif; }
-    body { background: #f7f8fa; margin: 0; padding: 20px; text-align: center; color: #333; }
+    * { box-sizing: border-box; }
+    body { background: #f7f8fa; margin: 0; padding: 20px; text-align: center; color: #333; font-family: 'Prompt', sans-serif; }
     
     .step-section { display: none; background: white; max-width: 800px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .step-section.active { display: block; }
@@ -28,20 +33,38 @@
     
     input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; text-align: center; }
 
+    /* แก้ภาพยืดด้วย object-fit & aspect-ratio */
     .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
-    video, .partner-preview { width: 320px; height: 240px; background: #222; border-radius: 15px; object-fit: cover; }
+    .camera-box { width: 320px; height: 240px; background: #222; border-radius: 15px; overflow: hidden; position: relative; }
+    video, .partner-preview { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .partner-preview { transform: none; }
+
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
 
-    #frameCanvasContainer { display: inline-block; padding: 20px 20px 40px 20px; border-radius: 15px; position: relative; margin: 20px 0; min-width: 360px; }
+    /* กรอบรูปถ่าย */
+    #frameCanvasContainer { display: inline-block; padding: 20px 20px 60px 20px; border-radius: 15px; position: relative; margin: 20px 0; min-width: 380px; overflow: hidden; }
     .grid-layout { display: flex; flex-direction: column; gap: 12px; }
     .photo-row { display: flex; gap: 12px; justify-content: center; }
-    .photo-row img { width: 160px; height: 120px; object-fit: cover; border-radius: 6px; }
+    .photo-row img { width: 170px; height: 125px; object-fit: cover; border-radius: 6px; }
 
-    .sticker-palette { display: flex; justify-content: center; gap: 15px; font-size: 30px; margin: 15px 0; }
-    .sticker-palette span { cursor: pointer; transition: 0.2s; user-select: none; }
+    /* คลังสติ๊กเกอร์ */
+    .sticker-palette-container { background: #f1f2f6; padding: 12px; border-radius: 15px; margin: 15px 0; }
+    .sticker-palette { display: flex; justify-content: center; gap: 12px; font-size: 28px; flex-wrap: wrap; }
+    .sticker-palette span { cursor: pointer; transition: 0.15s; user-select: none; padding: 4px; }
     .sticker-palette span:hover { transform: scale(1.3); }
 
-    .draggable-sticker { position: absolute; font-size: 35px; cursor: move; user-select: none; touch-action: none; }
+    /* สติ๊กเกอร์ & ข้อความแบบลากได้ */
+    .draggable-element { position: absolute; cursor: move; user-select: none; touch-action: none; will-change: transform; }
+    .draggable-sticker { font-size: 38px; }
+    
+    /* สไตล์ฟอนต์ */
+    .font-itim { font-family: 'Itim', cursive; }
+    .font-mali { font-family: 'Mali', cursive; }
+    .font-charm { font-family: 'Charm', cursive; }
+    .font-prompt { font-family: 'Prompt', sans-serif; }
+
+    .draggable-text { font-size: 22px; font-weight: bold; width: max-content; }
+
     .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
     .online { background: #e3fcce; color: #2ecc71; }
     .waiting { background: #ffeaa7; color: #d63031; }
@@ -101,16 +124,20 @@
   <!-- STEP 2 -->
   <div id="step2" class="step-section">
     <h2>2. เตรียมตัวถ่ายรูป</h2>
-    <div id="step2StatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนกดเข้าลิงก์... (1/2 คน)</div>
+    <div id="step2StatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเปิดกล้อง... (1/2 คน)</div>
 
     <div class="camera-container">
       <div>
         <h3>คุณ</h3>
-        <video id="myVideo" autoplay playsinline muted></video>
+        <div class="camera-box">
+          <video id="myVideo" autoplay playsinline muted></video>
+        </div>
       </div>
       <div>
         <h3>แฟน</h3>
-        <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Partner..." />
+        <div class="camera-box">
+          <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Partner..." />
+        </div>
       </div>
     </div>
 
@@ -123,23 +150,47 @@
   <!-- STEP 3 -->
   <div id="step3" class="step-section">
     <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
-    <p>คลิกเลือกสติ๊กเกอร์ หรือพิมพ์ข้อความ ซึ่งจะขึ้นสดๆ บนหน้าจอทั้ง 2 ฝ่าย!</p>
+    <p>แปะสติ๊กเกอร์ พิมพ์ข้อความ เลือกฟอนต์ และย้ายตำแหน่งได้แบบอิสระ!</p>
 
-    <div class="sticker-palette">
-      <span onclick="sendSticker('❤️')">❤️</span>
-      <span onclick="sendSticker('✨')">✨</span>
-      <span onclick="sendSticker('🌸')">🌸</span>
-      <span onclick="sendSticker('🐻')">🐻</span>
-      <span onclick="sendSticker('🎀')">🎀</span>
+    <div class="sticker-palette-container">
+      <small><b>เลือกสติ๊กเกอร์แปะกรอบรูป:</b></small>
+      <div class="sticker-palette">
+        <span onclick="sendSticker('❤️')">❤️</span>
+        <span onclick="sendSticker('💖')">💖</span>
+        <span onclick="sendSticker('✨')">✨</span>
+        <span onclick="sendSticker('🌸')">🌸</span>
+        <span onclick="sendSticker('🐻')">🐻</span>
+        <span onclick="sendSticker('🐰')">🐰</span>
+        <span onclick="sendSticker('🎀')">🎀</span>
+        <span onclick="sendSticker('☁️')">☁️</span>
+        <span onclick="sendSticker('🌙')">🌙</span>
+        <span onclick="sendSticker('🐱')">🐱</span>
+        <span onclick="sendSticker('🍓')">🍓</span>
+        <span onclick="sendSticker('🎂')">🎂</span>
+        <span onclick="sendSticker('💌')">💌</span>
+        <span onclick="sendSticker('☘️')">☘️</span>
+        <span onclick="sendSticker('🧸')">🧸</span>
+      </div>
     </div>
 
-    <div>
-      <input type="text" id="textInput" placeholder="พิมพ์ข้อความท้ายกรอบรูป..." oninput="sendTextChange(this.value)" style="width: 250px;">
+    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+      <input type="text" id="textInput" placeholder="พิมพ์ข้อความใส่กรอบ..." oninput="sendTextChange(this.value)" style="width: 220px;">
+      
+      <select id="fontSelect" onchange="changeFont(this.value)">
+        <option value="font-itim">ฟอนต์น่ารัก (Itim)</option>
+        <option value="font-mali">ฟอนต์เขียนมือ (Mali)</option>
+        <option value="font-charm">ฟอนต์อ่อนช้อย (Charm)</option>
+        <option value="font-prompt">ฟอนต์เรียบง่าย (Prompt)</option>
+      </select>
     </div>
 
     <div id="frameCanvasContainer" class="theme-pastel">
       <div id="photoGrid" class="grid-layout"></div>
-      <h3 style="margin-top: 15px; margin-bottom: 0;" id="frameText">Distance means so little ❤️</h3>
+      
+      <!-- ข้อความลากย้ายตำแหน่งได้ -->
+      <div id="frameText" class="draggable-element draggable-text font-itim" style="left: 20%; bottom: 15px;">
+        Distance means so little ❤️
+      </div>
     </div>
 
     <br>
@@ -156,12 +207,13 @@
     let myPhotos = [];
     let partnerPhotos = [];
     let currentSlot = 0;
+    let streamInterval = null;
 
     const myVideo = document.getElementById('myVideo');
+    const partnerImg = document.getElementById('partnerImg');
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
-    // ตรวจสอบ URL เมื่อเปิดหน้าเว็บ ถ้ามี ?room=XXXX ให้เข้าห้องทันที
     window.onload = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('room');
@@ -190,9 +242,32 @@
       socket.emit('join-room', currentRoomId);
       
       navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => { myVideo.srcObject = stream; })
+        .then(stream => { 
+          myVideo.srcObject = stream;
+          startLiveStreaming();
+        })
         .catch(err => console.log("Camera error:", err));
     }
+
+    // ส่งภาพกล้องวิดีโอสด Real-time ไปให้อีกฝ่าย
+    function startLiveStreaming() {
+      if (streamInterval) clearInterval(streamInterval);
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 240;
+      tempCanvas.height = 180;
+      const ctx = tempCanvas.getContext('2d');
+
+      streamInterval = setInterval(() => {
+        if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA) {
+          ctx.drawImage(myVideo, 0, 0, 240, 180);
+          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.4));
+        }
+      }, 150); // ส่งทุกๆ 150ms เพื่อความลื่นไหล
+    }
+
+    socket.on('receive-partner-stream', (frameData) => {
+      partnerImg.src = frameData;
+    });
 
     function copyLink() {
       const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
@@ -214,8 +289,6 @@
       if (data.config) {
         totalSlots = data.config.slots;
         selectedTheme = data.config.theme;
-        
-        // ถ้าแฟนเข้ามาทีหลัง ให้เด้งตามไป Step ที่คนสร้างห้องตั้งไว้
         if (data.config.currentStep && data.config.currentStep !== 'step0') {
           renderStep(data.config.currentStep);
         }
@@ -287,9 +360,13 @@
 
     function captureFrame() {
       const canvas = document.createElement('canvas');
-      canvas.width = 320; canvas.height = 240;
-      canvas.getContext('2d').drawImage(myVideo, 0, 0, 320, 240);
-      return canvas.toDataURL('image/jpeg', 0.6);
+      canvas.width = 340; canvas.height = 250;
+      const ctx = canvas.getContext('2d');
+      // กลับด้านกล้องตัวเองให้เหมือนกระจกตอนเซฟรูป
+      ctx.translate(340, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(myVideo, 0, 0, 340, 250);
+      return canvas.toDataURL('image/jpeg', 0.7);
     }
 
     socket.on('receive-partner-photos', (photos) => {
@@ -301,6 +378,7 @@
       if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
         renderPhotostrip();
         renderStep('step3');
+        makeElementSmoothDraggable(document.getElementById('frameText'), 'text');
       }
     }
 
@@ -326,61 +404,88 @@
       }
     }
 
+    // เพิ่มสติ๊กเกอร์
     function sendSticker(emoji) {
       const id = 'sticker_' + Math.random().toString(36).substr(2, 9);
-      socket.emit('add-sticker', { id, emoji, left: '45%', top: '40%' });
+      socket.emit('add-sticker', { id, emoji, left: '40%', top: '40%' });
     }
 
     socket.on('sticker-added', (data) => {
       const sticker = document.createElement('div');
       sticker.id = data.id;
-      sticker.className = 'draggable-sticker';
+      sticker.className = 'draggable-element draggable-sticker';
       sticker.innerText = data.emoji;
       sticker.style.left = data.left;
       sticker.style.top = data.top;
-      makeDraggable(sticker);
       document.getElementById('frameCanvasContainer').appendChild(sticker);
+      makeElementSmoothDraggable(sticker, 'sticker');
     });
 
+    // ปรับแต่งข้อความ & ฟอนต์
     function sendTextChange(val) {
       socket.emit('update-frame-text', val);
     }
-
     socket.on('frame-text-updated', (text) => {
       document.getElementById('frameText').innerText = text || "Distance means so little ❤️";
     });
 
-    function makeDraggable(elmnt) {
-      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-      elmnt.onmousedown = dragMouseDown;
-      elmnt.ontouchstart = dragMouseDown;
+    function changeFont(fontClass) {
+      socket.emit('update-font-style', fontClass);
+    }
+    socket.on('font-style-updated', (fontClass) => {
+      const el = document.getElementById('frameText');
+      el.className = `draggable-element draggable-text ${fontClass}`;
+      document.getElementById('fontSelect').value = fontClass;
+    });
 
-      function dragMouseDown(e) {
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        pos3 = clientX; pos4 = clientY;
-        document.onmouseup = closeDragElement;
-        document.ontouchend = closeDragElement;
-        document.onmousemove = elementDrag;
-        document.ontouchmove = elementDrag;
+    // ระบบลากวางแบบลื่นไหล (Smooth Drag & Drop ไร้อาการกระตุก)
+    function makeElementSmoothDraggable(elmnt, type) {
+      let isDragging = false;
+      let startX, startY, initialLeft, initialTop;
+
+      elmnt.addEventListener('mousedown', startDrag);
+      elmnt.addEventListener('touchstart', startDrag, { passive: false });
+
+      function startDrag(e) {
+        isDragging = true;
+        const event = e.touches ? e.touches[0] : e;
+        startX = event.clientX;
+        startY = event.clientY;
+        initialLeft = elmnt.offsetLeft;
+        initialTop = elmnt.offsetTop;
+
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
       }
 
-      function elementDrag(e) {
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        pos1 = pos3 - clientX; pos2 = pos4 - clientY;
-        pos3 = clientX; pos4 = clientY;
-        const newTop = (elmnt.offsetTop - pos2) + "px";
-        const newLeft = (elmnt.offsetLeft - pos1) + "px";
-        elmnt.style.top = newTop;
+      function drag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const event = e.touches ? e.touches[0] : e;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+
+        const newLeft = (initialLeft + dx) + 'px';
+        const newTop = (initialTop + dy) + 'px';
+
         elmnt.style.left = newLeft;
-        
-        socket.emit('update-sticker-pos', { id: elmnt.id, left: newLeft, top: newTop });
+        elmnt.style.top = newTop;
+
+        if (type === 'sticker') {
+          socket.emit('update-sticker-pos', { id: elmnt.id, left: newLeft, top: newTop });
+        } else if (type === 'text') {
+          socket.emit('update-text-pos', { left: newLeft, top: newTop });
+        }
       }
 
-      function closeDragElement() {
-        document.onmouseup = null; document.ontouchend = null;
-        document.onmousemove = null; document.ontouchmove = null;
+      function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchend', stopDrag);
       }
     }
 
@@ -392,19 +497,27 @@
       }
     });
 
+    socket.on('text-pos-moved', (pos) => {
+      const el = document.getElementById('frameText');
+      if (el) {
+        el.style.left = pos.left;
+        el.style.top = pos.top;
+      }
+    });
+
     function exportImage(format) {
       const element = document.getElementById('frameCanvasContainer');
-      html2canvas(element).then(canvas => {
+      html2canvas(element, { scale: 2 }).then(canvas => {
         const link = document.createElement('a');
         link.download = `LDR-Photobooth.${format}`;
-        link.href = canvas.toDataURL('image/jpeg');
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
         link.click();
       });
     }
 
     function exportPDF() {
       const element = document.getElementById('frameCanvasContainer');
-      html2canvas(element).then(canvas => {
+      html2canvas(element, { scale: 2 }).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
