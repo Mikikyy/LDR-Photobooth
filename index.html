@@ -219,12 +219,27 @@
 
     function initCamera() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } })
-          .then(stream => { 
-            myVideo.srcObject = stream;
-            startLiveStreaming();
-          })
-          .catch(err => console.log("Camera error:", err));
+        // บังคับเลือกกล้องหน้าด้วย facingMode: "user"
+        navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: "user",
+            width: { ideal: 640 }, 
+            height: { ideal: 480 } 
+          } 
+        })
+        .then(stream => { 
+          myVideo.srcObject = stream;
+          startLiveStreaming();
+        })
+        .catch(err => {
+          console.log("Camera error:", err);
+          // สำรองกรณีอุปกรณ์บางชนิดไม่รองรับ constraint facingMode
+          navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+              myVideo.srcObject = stream;
+              startLiveStreaming();
+            });
+        });
       }
     }
 
@@ -240,9 +255,14 @@
         if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
           isSendingFrame = true;
           
+          // กลับด้านภาพพรีวิวกล้องหน้า ให้คู่ของเราเห็นด้านที่ถูกต้อง
+          ctx.save();
+          ctx.translate(640, 0);
+          ctx.scale(-1, 1);
           ctx.drawImage(myVideo, 0, 0, 640, 480);
+          ctx.restore();
+
           const frameData = tempCanvas.toDataURL('image/jpeg', 0.7);
-          
           socket.emit('stream-frame', frameData);
           
           setTimeout(() => { isSendingFrame = false; }, 100);
@@ -353,6 +373,7 @@
       canvas.height = 960;
       
       const ctx = canvas.getContext('2d');
+      // พลิกกระจกสำหรับรูป HD ที่ถ่ายจริง
       ctx.translate(1280, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(myVideo, 0, 0, 1280, 960);
