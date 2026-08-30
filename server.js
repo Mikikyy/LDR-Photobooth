@@ -5,10 +5,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  maxHttpBufferSize: 1e7,
-  cors: { origin: "*" }
-});
+const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
 app.use(express.static(__dirname));
 
@@ -16,52 +13,40 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// เก็บข้อมูลผู้เล่นจริงตาม Socket ID
-const rooms = {};
-
-function updateRoomStatus(roomId) {
-  if (!rooms[roomId]) return;
-  
-  // ดึงรายชื่อ socketid ที่อยู่ในห้องจริงๆ จาก Socket.io
-  const clients = io.sockets.adapter.rooms.get(roomId);
-  const userCount = clients ? clients.size : 0;
-  
-  io.to(roomId).emit('room-status', { 
-    userCount: userCount, 
-    config: rooms[roomId].config 
-  });
-}
+const roomConfigs = {};
 
 io.on('connection', (socket) => {
-  
   socket.on('join-room', (roomId) => {
+    // ออกจากห้องเดิมก่อนถ้ามี
+    if (socket.roomId) {
+      socket.leave(socket.roomId);
+    }
+
     socket.join(roomId);
     socket.roomId = roomId;
 
-    if (!rooms[roomId]) {
-      rooms[roomId] = { 
-        config: { slots: 3, theme: 'theme-pastel' },
-        stickers: [],
-        customText: 'Distance means so little ❤️'
-      };
+    if (!roomConfigs[roomId]) {
+      roomConfigs[roomId] = { slots: 3, theme: 'theme-pastel' };
     }
 
-    // อัปเดตสถานะคนในห้องให้ทุกคนทันทีที่มีคน Join
-    setTimeout(() => {
-      updateRoomStatus(roomId);
-    }, 300);
+    // ฟังก์ชันส่งจำนวนคนจริงในห้อง
+    const sendRoomStatus = () => {
+      const room = io.sockets.adapter.rooms.get(roomId);
+      const userCount = room ? room.size : 0;
+      io.to(roomId).emit('room-status', { 
+        userCount: userCount, 
+        config: roomConfigs[roomId] 
+      });
+    };
 
-    // รองรับการร้องขอเช็กจำนวนคนแบบ Manual จากฝั่ง Client
-    socket.on('check-status', () => {
-      updateRoomStatus(roomId);
-    });
+    sendRoomStatus();
 
     socket.on('change-step', (stepId) => {
       io.to(roomId).emit('navigate-to-step', stepId);
     });
 
     socket.on('update-config', (config) => {
-      rooms[roomId].config = config;
+      roomConfigs[roomId] = config;
       io.to(roomId).emit('config-updated', config);
     });
 
@@ -82,24 +67,14 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update-frame-text', (text) => {
-      if (rooms[roomId]) {
-        rooms[roomId].customText = text;
-        io.to(roomId).emit('frame-text-updated', text);
-      }
+      io.to(roomId).emit('frame-text-updated', text);
     });
-  });
 
-  socket.on('disconnecting', () => {
-    const roomId = socket.roomId;
-    if (roomId) {
-      setTimeout(() => {
-        updateRoomStatus(roomId);
-      }, 300);
-    }
+    socket.on('disconnect', () => {
+      sendRoomStatus();
+    });
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
