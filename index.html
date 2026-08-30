@@ -25,7 +25,6 @@
 
     .btn { padding: 12px 28px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.3s; margin: 5px; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
-    .btn:disabled { background: #ffa4ac; opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
     
     input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; text-align: center; }
 
@@ -69,12 +68,12 @@
 
   <!-- STEP 1 -->
   <div id="step1" class="step-section">
-    <h2>1. เลือกธีมและจำนวนช่องถ่ายรูป</h2>
+    <h2>1. ตั้งค่าและส่งลิงก์ให้แฟน</h2>
     <div id="roomStatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)</div>
     
     <p style="margin-bottom: 0;"><b>รหัสห้องของคุณ:</b></p>
     <div id="roomDisplay" class="room-code-display">----</div>
-    <button class="btn" style="background: #70a1ff; padding: 6px 15px; font-size: 14px;" onclick="copyCode()">📋 คัดลอกรหัสห้องส่งให้แฟน</button>
+    <button class="btn" style="background: #70a1ff; padding: 8px 20px; font-size: 15px;" onclick="copyLink()">🔗 คัดลอกลิงก์ส่งให้แฟน</button>
     
     <div style="margin-top: 20px;">
       <label><b>เลือกจำนวนช่อง:</b></label>
@@ -96,12 +95,14 @@
     </div>
 
     <br>
-    <button id="startBtn" class="btn" onclick="requestGoToStep2()" disabled>รอแฟนเข้าห้องก่อนนะ...</button>
+    <button class="btn" style="background: #2ed573; font-size: 18px;" onclick="requestGoToStep2()">เมื่อส่งลิงก์ให้แฟนแล้ว กดถัดไป ➡️</button>
   </div>
 
   <!-- STEP 2 -->
   <div id="step2" class="step-section">
     <h2>2. เตรียมตัวถ่ายรูป</h2>
+    <div id="step2StatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนกดเข้าลิงก์... (1/2 คน)</div>
+
     <div class="camera-container">
       <div>
         <h3>คุณ</h3>
@@ -109,7 +110,7 @@
       </div>
       <div>
         <h3>แฟน</h3>
-        <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Photo..." />
+        <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Partner..." />
       </div>
     </div>
 
@@ -160,6 +161,15 @@
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
+    // ตรวจสอบ URL เมื่อเปิดหน้าเว็บ ถ้ามี ?room=XXXX ให้เข้าห้องทันที
+    window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      if (roomParam && roomParam.length === 4) {
+        joinRoom(roomParam);
+      }
+    };
+
     function createRoom() {
       const code = Math.floor(1000 + Math.random() * 9000).toString();
       joinRoom(code);
@@ -181,30 +191,34 @@
       
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => { myVideo.srcObject = stream; })
-        .catch(err => console.log("Camera access error:", err));
-
-      renderStep('step1');
+        .catch(err => console.log("Camera error:", err));
     }
 
-    function copyCode() {
-      navigator.clipboard.writeText(currentRoomId);
-      alert(`คัดลอกรหัสห้อง ${currentRoomId} แล้ว! ส่งรหัสนี้ให้แฟนพิมพ์เข้าห้องได้เลยครับ`);
+    function copyLink() {
+      const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
+      navigator.clipboard.writeText(fullUrl);
+      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าหน้าถ่ายรูปทันทีครับ`);
     }
 
     socket.on('room-status', (data) => {
-      const badge = document.getElementById('roomStatusBadge');
-      const startBtn = document.getElementById('startBtn');
+      const badge1 = document.getElementById('roomStatusBadge');
+      const badge2 = document.getElementById('step2StatusBadge');
+      const count = data.userCount;
       
-      if (data.userCount >= 2) {
-        badge.className = "status-badge online";
-        badge.innerText = `🟢 แฟนเข้ามาในห้องแล้ว! (2/2 คน)`;
-        startBtn.disabled = false;
-        startBtn.innerText = "พร้อมถ่ายรูปแล้ว! ➡️";
-      } else {
-        badge.className = "status-badge waiting";
-        badge.innerText = `⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)`;
-        startBtn.disabled = true;
-        startBtn.innerText = "รอแฟนเข้าห้องก่อนนะ...";
+      const text = count >= 2 ? `🟢 แฟนอยู่ในห้องแล้ว! (${count}/2 คน)` : `⏳ กำลังรอแฟน... (${count}/2 คน)`;
+      const className = count >= 2 ? "status-badge online" : "status-badge waiting";
+
+      badge1.className = className; badge1.innerText = text;
+      badge2.className = className; badge2.innerText = text;
+
+      if (data.config) {
+        totalSlots = data.config.slots;
+        selectedTheme = data.config.theme;
+        
+        // ถ้าแฟนเข้ามาทีหลัง ให้เด้งตามไป Step ที่คนสร้างห้องตั้งไว้
+        if (data.config.currentStep && data.config.currentStep !== 'step0') {
+          renderStep(data.config.currentStep);
+        }
       }
     });
 
@@ -226,9 +240,6 @@
     socket.on('config-updated', (config) => {
       totalSlots = config.slots;
       selectedTheme = config.theme;
-      document.getElementById('slotSelect').value = config.slots;
-      document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
-      document.querySelector(`.${config.theme}`)?.classList.add('selected');
     });
 
     function requestGoToStep2() { 
@@ -244,9 +255,7 @@
     socket.on('trigger-countdown', () => {
       snapBtn.disabled = true;
       snapBtn.innerText = "⏳ กำลังถ่ายรูป...";
-      myPhotos = [];
-      partnerPhotos = [];
-      currentSlot = 0;
+      myPhotos = []; partnerPhotos = []; currentSlot = 0;
       captureSequence();
     });
 
@@ -264,9 +273,7 @@
             clearInterval(timer);
             countdownEl.innerText = "CHEESE! 📸";
             
-            const photoData = captureFrame();
-            myPhotos.push(photoData);
-
+            myPhotos.push(captureFrame());
             currentSlot++;
             setTimeout(captureSequence, 1500);
           }
@@ -282,7 +289,7 @@
       const canvas = document.createElement('canvas');
       canvas.width = 320; canvas.height = 240;
       canvas.getContext('2d').drawImage(myVideo, 0, 0, 320, 240);
-      return canvas.toDataURL('image/jpeg');
+      return canvas.toDataURL('image/jpeg', 0.6);
     }
 
     socket.on('receive-partner-photos', (photos) => {
@@ -351,8 +358,7 @@
       function dragMouseDown(e) {
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        pos3 = clientX;
-        pos4 = clientY;
+        pos3 = clientX; pos4 = clientY;
         document.onmouseup = closeDragElement;
         document.ontouchend = closeDragElement;
         document.onmousemove = elementDrag;
@@ -362,10 +368,8 @@
       function elementDrag(e) {
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        pos1 = pos3 - clientX;
-        pos2 = pos4 - clientY;
-        pos3 = clientX;
-        pos4 = clientY;
+        pos1 = pos3 - clientX; pos2 = pos4 - clientY;
+        pos3 = clientX; pos4 = clientY;
         const newTop = (elmnt.offsetTop - pos2) + "px";
         const newLeft = (elmnt.offsetLeft - pos1) + "px";
         elmnt.style.top = newTop;
@@ -375,10 +379,8 @@
       }
 
       function closeDragElement() {
-        document.onmouseup = null;
-        document.ontouchend = null;
-        document.onmousemove = null;
-        document.ontouchmove = null;
+        document.onmouseup = null; document.ontouchend = null;
+        document.onmousemove = null; document.ontouchmove = null;
       }
     }
 
