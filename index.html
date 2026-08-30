@@ -14,10 +14,16 @@
     .step-section { display: none; background: white; max-width: 800px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .step-section.active { display: block; }
 
-    .theme-pastel { background: #ffeaa7; color: #d63031; }
-    .theme-pink { background: #ff758c; color: #ffffff; }
-    .theme-vintage { background: #d7ccc8; color: #4e342e; }
-    .theme-dark { background: #2d3436; color: #dfe6e9; }
+    /* Theme Styles */
+    .theme-pastel { background: #ffeaa7; color: #d63031; border: 4px solid #fdcb6e; }
+    .theme-pink { background: #ff758c; color: #ffffff; border: 4px solid #ff758c; }
+    .theme-vintage { background: #d7ccc8; color: #4e342e; border: 4px solid #8d6e63; }
+    .theme-dark { background: #2d3436; color: #dfe6e9; border: 4px solid #636e72; }
+
+    /* Theme Cards Preview */
+    .theme-options { display: flex; justify-content: center; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
+    .theme-card { padding: 15px 20px; border-radius: 12px; cursor: pointer; border: 3px solid transparent; font-weight: bold; transition: 0.2s; }
+    .theme-card.selected { border-color: #ff4757; transform: scale(1.05); }
 
     .btn { padding: 12px 28px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.3s; margin: 5px; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
@@ -29,7 +35,7 @@
     video, .partner-preview { width: 320px; height: 240px; background: #222; border-radius: 15px; object-fit: cover; }
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
 
-    #frameCanvasContainer { display: inline-block; padding: 20px 20px 40px 20px; border-radius: 10px; position: relative; margin: 20px 0; }
+    #frameCanvasContainer { display: inline-block; padding: 20px 20px 40px 20px; border-radius: 15px; position: relative; margin: 20px 0; min-width: 360px; }
     .grid-layout { display: flex; flex-direction: column; gap: 12px; }
     .photo-row { display: flex; gap: 12px; justify-content: center; }
     .photo-row img { width: 160px; height: 120px; object-fit: cover; border-radius: 6px; }
@@ -38,7 +44,7 @@
     .sticker-palette span { cursor: pointer; transition: 0.2s; user-select: none; }
     .sticker-palette span:hover { transform: scale(1.3); }
 
-    .draggable-sticker { position: absolute; font-size: 35px; cursor: move; user-select: none; }
+    .draggable-sticker { position: absolute; font-size: 35px; cursor: move; user-select: none; touch-action: none; }
     .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
     .online { background: #e3fcce; color: #2ecc71; }
     .waiting { background: #ffeaa7; color: #d63031; }
@@ -48,7 +54,7 @@
 
   <h1>📷 LDR Photobooth</h1>
 
-  <!-- STEP 0: สร้าง/เข้าร่วมห้อง -->
+  <!-- STEP 0 -->
   <div id="step0" class="step-section active">
     <h2>เข้าใช้งานตู้ถ่ายรูปคู่</h2>
     <p>สร้างห้องใหม่ หรือกรอกรหัสห้องเพื่อถ่ายรูปกับแฟน</p>
@@ -62,7 +68,7 @@
     </div>
   </div>
 
-  <!-- STEP 1: ตั้งค่าห้อง -->
+  <!-- STEP 1 -->
   <div id="step1" class="step-section">
     <h2>1. เลือกธีมและจำนวนช่องถ่ายรูป</h2>
     <div id="roomStatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)</div>
@@ -79,21 +85,22 @@
       </select>
     </div>
 
+    <!-- 2. แก้ปัญหา Theme Preview ให้เห็นสีชัดเจน -->
     <div>
       <label><b>เลือก Theme กรอบรูป:</b></label>
-      <select id="themeSelect" onchange="syncConfig()">
-        <option value="theme-pastel">Pastel Yellow</option>
-        <option value="theme-pink">Sweet Pink</option>
-        <option value="theme-vintage">Vintage Brown</option>
-        <option value="theme-dark">Minimal Dark</option>
-      </select>
+      <div class="theme-options">
+        <div class="theme-card theme-pastel selected" onclick="selectTheme('theme-pastel')">Pastel Yellow 💛</div>
+        <div class="theme-card theme-pink" onclick="selectTheme('theme-pink')">Sweet Pink 💗</div>
+        <div class="theme-card theme-vintage" onclick="selectTheme('theme-vintage')">Vintage Brown 🤎</div>
+        <div class="theme-card theme-dark" onclick="selectTheme('theme-dark')">Minimal Dark 🖤</div>
+      </div>
     </div>
 
     <br>
     <button id="startBtn" class="btn" onclick="goToStep2()" disabled>รอแฟนเข้าห้องก่อนนะ...</button>
   </div>
 
-  <!-- STEP 2: ถ่ายรูป -->
+  <!-- STEP 2 -->
   <div id="step2" class="step-section">
     <h2>2. เตรียมตัวถ่ายรูป</h2>
     <div class="camera-container">
@@ -113,17 +120,21 @@
     <button id="snapBtn" class="btn" onclick="triggerSnap()">📸 กดถ่ายรูป (ใครกดก็ได้)</button>
   </div>
 
-  <!-- STEP 3: ตกแต่ง & ดาวน์โหลด -->
+  <!-- STEP 3: ตกแต่ง real-time & ดาวน์โหลด -->
   <div id="step3" class="step-section">
     <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
-    <p>ลากวางสติ๊กเกอร์ตกแต่งรูปคู่ได้ตามใจชอบเลย!</p>
+    <p>คลิกเลือกสติ๊กเกอร์ หรือพิมพ์ข้อความ ซึ่งจะขึ้นสดๆ บนหน้าจอทั้ง 2 ฝ่าย!</p>
 
     <div class="sticker-palette">
-      <span onclick="addSticker('❤️')">❤️</span>
-      <span onclick="addSticker('✨')">✨</span>
-      <span onclick="addSticker('🌸')">🌸</span>
-      <span onclick="addSticker('🐻')">🐻</span>
-      <span onclick="addSticker('🎀')">🎀</span>
+      <span onclick="sendSticker('❤️')">❤️</span>
+      <span onclick="sendSticker('✨')">✨</span>
+      <span onclick="sendSticker('🌸')">🌸</span>
+      <span onclick="sendSticker('🐻')">🐻</span>
+      <span onclick="sendSticker('🎀')">🎀</span>
+    </div>
+
+    <div>
+      <input type="text" id="textInput" placeholder="พิมพ์ข้อความท้ายกรอบรูป..." oninput="sendTextChange(this.value)" style="width: 250px;">
     </div>
 
     <div id="frameCanvasContainer" class="theme-pastel">
@@ -132,8 +143,8 @@
     </div>
 
     <br>
-    <button class="btn" onclick="exportImage('jpg')">ดาวน์โหลด JPG</button>
-    <button class="btn" onclick="exportPDF()">ดาวน์โหลด PDF</button>
+    <button class="btn" style="background: #2ed573;" onclick="exportImage('jpg')">🖼️ ดาวน์โหลด JPG</button>
+    <button class="btn" style="background: #ff4757;" onclick="exportPDF()">📄 ดาวน์โหลด PDF</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -150,7 +161,6 @@
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
-    // เช็ก URL ว่ามี room id แนบมาไหม (กรณีแฟนกดลิงก์เข้ามา)
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get('room');
     if (roomParam) {
@@ -187,6 +197,7 @@
       alert("คัดลอกลิงก์ห้องแล้ว! ส่งให้แฟนกดเข้าลิงก์นี้ได้เลยครับ");
     }
 
+    // 1. แก้ปัญหาอีกคนเข้าห้องแล้วไม่ขึ้นเตือน
     socket.on('room-status', (data) => {
       const badge = document.getElementById('roomStatusBadge');
       const startBtn = document.getElementById('startBtn');
@@ -204,10 +215,17 @@
       }
     });
 
+    function selectTheme(themeName) {
+      selectedTheme = themeName;
+      document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
+      document.querySelector(`.${themeName}`).classList.add('selected');
+      syncConfig();
+    }
+
     function syncConfig() {
       const config = {
         slots: parseInt(document.getElementById('slotSelect').value),
-        theme: document.getElementById('themeSelect').value
+        theme: selectedTheme
       };
       socket.emit('update-config', config);
     }
@@ -216,7 +234,8 @@
       totalSlots = config.slots;
       selectedTheme = config.theme;
       document.getElementById('slotSelect').value = config.slots;
-      document.getElementById('themeSelect').value = config.theme;
+      document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
+      document.querySelector(`.${config.theme}`)?.classList.add('selected');
     });
 
     function goToStep2() { switchStep('step2'); }
@@ -271,6 +290,7 @@
       checkAndComplete();
     });
 
+    // 3. ย้ายไปหน้าแต่งรูปและเซฟไฟล์อัตโนมัติเมื่อถ่ายเสร็จทั้งสองฝ่าย
     function checkAndComplete() {
       if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
         renderPhotostrip();
@@ -300,43 +320,77 @@
       }
     }
 
-    function addSticker(emoji) {
+    // ระบบซิงก์ตกแต่งสติ๊กเกอร์และข้อความ real-time
+    function sendSticker(emoji) {
+      const id = 'sticker_' + Math.random().toString(36).substr(2, 9);
+      socket.emit('add-sticker', { id, emoji, left: '45%', top: '40%' });
+    }
+
+    socket.on('sticker-added', (data) => {
       const sticker = document.createElement('div');
+      sticker.id = data.id;
       sticker.className = 'draggable-sticker';
-      sticker.innerText = emoji;
-      sticker.style.left = '50%';
-      sticker.style.top = '50%';
+      sticker.innerText = data.emoji;
+      sticker.style.left = data.left;
+      sticker.style.top = data.top;
       makeDraggable(sticker);
       document.getElementById('frameCanvasContainer').appendChild(sticker);
+    });
+
+    function sendTextChange(val) {
+      socket.emit('update-frame-text', val);
     }
+
+    socket.on('frame-text-updated', (text) => {
+      document.getElementById('frameText').innerText = text || "Distance means so little ❤️";
+    });
 
     function makeDraggable(elmnt) {
       let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
       elmnt.onmousedown = dragMouseDown;
+      elmnt.ontouchstart = dragMouseDown;
 
       function dragMouseDown(e) {
-        e.preventDefault();
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        pos3 = clientX;
+        pos4 = clientY;
         document.onmouseup = closeDragElement;
+        document.ontouchend = closeDragElement;
         document.onmousemove = elementDrag;
+        document.ontouchmove = elementDrag;
       }
 
       function elementDrag(e) {
-        e.preventDefault();
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        pos1 = pos3 - clientX;
+        pos2 = pos4 - clientY;
+        pos3 = clientX;
+        pos4 = clientY;
+        const newTop = (elmnt.offsetTop - pos2) + "px";
+        const newLeft = (elmnt.offsetLeft - pos1) + "px";
+        elmnt.style.top = newTop;
+        elmnt.style.left = newLeft;
+        
+        socket.emit('update-sticker-pos', { id: elmnt.id, left: newLeft, top: newTop });
       }
 
       function closeDragElement() {
         document.onmouseup = null;
+        document.ontouchend = null;
         document.onmousemove = null;
+        document.ontouchmove = null;
       }
     }
+
+    socket.on('sticker-moved', (data) => {
+      const el = document.getElementById(data.id);
+      if (el) {
+        el.style.left = data.left;
+        el.style.top = data.top;
+      }
+    });
 
     function exportImage(format) {
       const element = document.getElementById('frameCanvasContainer');
