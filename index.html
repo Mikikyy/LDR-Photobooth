@@ -217,6 +217,16 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    
+    // เพิ่มบล็อกนี้ลงไป: บังคับเชื่อมต่อเข้าห้องใหม่เสมอเมื่อเกิดการโหลด/เน็ตกระตุก
+    socket.on('connect', () => {
+      if (currentRoomId) {
+        socket.emit('join-room', currentRoomId);
+      }
+    });
+
+    let currentRoomId = "";
+    // ... (โค้ดเดิมส่วนอื่นๆ ปล่อยไว้เหมือนเดิม)
     let currentRoomId = "";
     let totalSlots = 3;
     let selectedTheme = "theme-pastel";
