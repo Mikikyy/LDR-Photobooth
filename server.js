@@ -6,46 +6,69 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  maxHttpBufferSize: 1e7 // รองรับไฟล์ภาพถ่ายขนาดใหญ่
+  maxHttpBufferSize: 1e7
 });
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// เก็บข้อมูลผู้เล่นในแต่ละห้อง
 const rooms = {};
 
 io.on('connection', (socket) => {
-  
   socket.on('join-room', (roomId) => {
     socket.join(roomId);
     socket.roomId = roomId;
 
     if (!rooms[roomId]) {
-      rooms[roomId] = { users: [], config: { slots: 3, theme: 'theme-pastel' } };
+      rooms[roomId] = { 
+        users: [], 
+        config: { slots: 3, theme: 'theme-pastel' },
+        stickers: [],
+        customText: 'Distance means so little ❤️'
+      };
     }
 
-    rooms[roomId].users.push(socket.id);
-    const userCount = rooms[roomId].users.length;
+    if (!rooms[roomId].users.includes(socket.id)) {
+      rooms[roomId].users.push(socket.id);
+    }
 
-    // แจ้งจำนวนคนที่อยู่ในห้องปัจจุบัน
+    const userCount = rooms[roomId].users.length;
+    
+    // แจ้งสถานะผู้ใช้งานในห้องให้ทุกคนในห้องทราบ real-time
     io.to(roomId).emit('room-status', { userCount, config: rooms[roomId].config });
 
-    // ซิงก์การเลือก Theme และจำนวนช่อง
     socket.on('update-config', (config) => {
       rooms[roomId].config = config;
       io.to(roomId).emit('config-updated', config);
     });
 
-    // เริ่มนับถอยหลังถ่ายรูปพร้อมกัน
     socket.on('start-countdown', () => {
       io.to(roomId).emit('trigger-countdown');
     });
 
-    // ส่งชุดรูปถ่ายให้อีกฝั่ง
     socket.on('send-photos', (photos) => {
       socket.to(roomId).emit('receive-partner-photos', photos);
+    });
+
+    // ซิงก์การตกแต่งสติ๊กเกอร์ real-time
+    socket.on('add-sticker', (stickerData) => {
+      if (rooms[roomId]) {
+        rooms[roomId].stickers.push(stickerData);
+        io.to(roomId).emit('sticker-added', stickerData);
+      }
+    });
+
+    socket.on('update-sticker-pos', (data) => {
+      io.to(roomId).emit('sticker-moved', data);
+    });
+
+    // ซิงก์การพิมพ์ข้อความท้ายกรอบรูป real-time
+    socket.on('update-frame-text', (text) => {
+      if (rooms[roomId]) {
+        rooms[roomId].customText = text;
+        io.to(roomId).emit('frame-text-updated', text);
+      }
     });
   });
 
