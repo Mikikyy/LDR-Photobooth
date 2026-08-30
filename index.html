@@ -31,7 +31,7 @@
 
     .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
     video, .partner-preview { width: 320px; height: 240px; background: #222; border-radius: 15px; object-fit: cover; }
-    video { transform: scaleX(-1); } /* กลับด้านภาพกล้องตัวเองให้เหมือนกระจก */
+    video { transform: scaleX(-1); }
     .partner-preview { transform: none; }
 
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
@@ -99,13 +99,14 @@
     </div>
 
     <br>
-    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" onclick="requestGoToStep2()">เมื่อส่งลิงก์ให้แฟนแล้ว กดถัดไป ➡️</button>
+    <!-- ปรับปุ่มให้พิการไว้ก่อน และจะเด้งไปอัตโนมัติเมื่อแฟนเข้ามา -->
+    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
   </div>
 
   <!-- STEP 2 -->
   <div id="step2" class="step-section">
     <h2>2. เตรียมตัวถ่ายรูป</h2>
-    <div id="step2StatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนกดเข้าลิงก์... (1/2 คน)</div>
+    <div id="step2StatusBadge" class="status-badge waiting">⏳ กำลังรอแฟน... (1/2 คน)</div>
 
     <div class="camera-container">
       <div>
@@ -225,7 +226,6 @@
       }
     }
 
-    // 🎥 ทำหน้าที่ดึงภาพจากกล้องตัวเองแล้วส่งให้แฟนแบบ Real-time
     function startLiveStreaming() {
       if (streamInterval) clearInterval(streamInterval);
       const tempCanvas = document.createElement('canvas');
@@ -241,7 +241,6 @@
       }, 120);
     }
 
-    // 📥 รับภาพสตรีมกล้องจากแฟนมาแสดงบนหน้าจอ
     socket.on('receive-partner-stream', (frameData) => {
       partnerImg.src = frameData;
     });
@@ -249,23 +248,32 @@
     function copyLink() {
       const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
       navigator.clipboard.writeText(fullUrl);
-      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าห้องเดียวกับคุณทันทีครับ`);
+      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเด้งเข้าห้องถ่ายรูปทันทีครับ`);
     }
 
+    // รับสถานะจาก Server และอัปเดตหน้าจอทั้ง 2 ฝ่าย
     socket.on('room-status', (data) => {
       const badge1 = document.getElementById('roomStatusBadge');
       const badge2 = document.getElementById('step2StatusBadge');
+      const nextBtn = document.getElementById('nextStepBtn');
       const count = data.userCount;
       
-      const text = count >= 2 ? `🟢 แฟนอยู่ในห้องแล้ว! (${count}/2 คน)` : `⏳ กำลังรอแฟน... (${count}/2 คน)`;
-      const className = count >= 2 ? "status-badge online" : "status-badge waiting";
+      const isReady = count >= 2;
+      const text = isReady ? `🟢 แฟนอยู่ในห้องแล้ว! (${count}/2 คน)` : `⏳ กำลังรอแฟน... (${count}/2 คน)`;
+      const className = isReady ? "status-badge online" : "status-badge waiting";
 
       if (badge1) { badge1.className = className; badge1.innerText = text; }
       if (badge2) { badge2.className = className; badge2.innerText = text; }
 
+      if (nextBtn) {
+        nextBtn.disabled = !isReady;
+        nextBtn.innerText = isReady ? "พร้อมถ่ายรูปแล้ว! ➡️" : "⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป";
+      }
+
       if (data.config) {
         totalSlots = data.config.slots;
         selectedTheme = data.config.theme;
+        document.getElementById('slotSelect').value = totalSlots;
       }
     });
 
@@ -287,11 +295,10 @@
     socket.on('config-updated', (config) => {
       totalSlots = config.slots;
       selectedTheme = config.theme;
+      document.getElementById('slotSelect').value = totalSlots;
+      document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
+      document.querySelector(`.${config.theme}`)?.classList.add('selected');
     });
-
-    function requestGoToStep2() { 
-      socket.emit('change-step', 'step2');
-    }
 
     socket.on('navigate-to-step', (stepId) => {
       renderStep(stepId);
