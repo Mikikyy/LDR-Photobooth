@@ -1,232 +1,6 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LDR Photobooth</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Charm:wght@700&family=Itim&family=Mali:ital,wght@0,500;1,500&family=Prompt:wght@400;600&display=swap" rel="stylesheet">
-
-  <style>
-    * { box-sizing: border-box; }
-    body { background: #f7f8fa; margin: 0; padding: 20px; text-align: center; color: #333; font-family: 'Prompt', sans-serif; }
-    
-    .step-section { display: none; background: white; max-width: 800px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-    .step-section.active { display: block !important; }
-
-    .theme-pastel { background: #ffeaa7; color: #d63031; border: 4px solid #fdcb6e; }
-    .theme-pink { background: #ff758c; color: #ffffff; border: 4px solid #ff758c; }
-    .theme-vintage { background: #d7ccc8; color: #4e342e; border: 4px solid #8d6e63; }
-    .theme-dark { background: #2d3436; color: #dfe6e9; border: 4px solid #636e72; }
-
-    .theme-options { display: flex; justify-content: center; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
-    .theme-card { padding: 15px 20px; border-radius: 12px; cursor: pointer; border: 3px solid transparent; font-weight: bold; transition: 0.2s; }
-    .theme-card.selected { border-color: #ff4757; transform: scale(1.05); }
-
-    .btn { padding: 12px 28px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.2s; margin: 5px; }
-    .btn:active { transform: scale(0.96); }
-    .btn:hover { box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
-    .btn:disabled { background: #ccc !important; cursor: not-allowed !important; transform: none !important; box-shadow: none !important; }
-
-    input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; text-align: center; }
-
-    /* แก้ปัญหาภาพยืดฝั่งแฟน & กล้องตัวเอง */
-    .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
-    .camera-box { 
-      width: 320px; 
-      height: 240px; 
-      background: #222; 
-      border-radius: 15px; 
-      overflow: hidden; 
-      position: relative; 
-    }
-    .camera-box video, 
-    .camera-box img, 
-    .partner-preview { 
-      width: 100% !important; 
-      height: 100% !important; 
-      object-fit: cover !important; 
-      display: block;
-    }
-    video { transform: scaleX(-1); }
-    .partner-preview { transform: none; }
-
-    #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
-
-    /* กรอบรูปถ่าย */
-    #frameCanvasContainer { display: inline-block; padding: 20px 20px 60px 20px; border-radius: 15px; position: relative; margin: 20px 0; min-width: 380px; overflow: hidden; }
-    .grid-layout { display: flex; flex-direction: column; gap: 12px; }
-    .photo-row { display: flex; gap: 12px; justify-content: center; }
-    .photo-row img { width: 170px; height: 125px; object-fit: cover; border-radius: 6px; }
-
-    /* คลังสติ๊กเกอร์ */
-    .sticker-palette-container { background: #f1f2f6; padding: 12px; border-radius: 15px; margin: 15px 0; }
-    .sticker-palette { display: flex; justify-content: center; gap: 12px; font-size: 28px; flex-wrap: wrap; }
-    .sticker-palette span { cursor: pointer; transition: 0.15s; user-select: none; padding: 4px; }
-    .sticker-palette span:hover { transform: scale(1.3); }
-
-    /* สติ๊กเกอร์ & ข้อความแบบลากได้ */
-    .draggable-element { position: absolute; cursor: move; user-select: none; touch-action: none; will-change: transform; }
-    .draggable-sticker { font-size: 38px; }
-    
-    /* สไตล์ฟอนต์ */
-    .font-itim { font-family: 'Itim', cursive; }
-    .font-mali { font-family: 'Mali', cursive; }
-    .font-charm { font-family: 'Charm', cursive; }
-    .font-prompt { font-family: 'Prompt', sans-serif; }
-
-    .draggable-text { font-size: 22px; font-weight: bold; width: max-content; }
-
-    .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
-    .online { background: #e3fcce; color: #2ecc71; }
-    .waiting { background: #ffeaa7; color: #d63031; }
-    .room-code-display { font-size: 36px; font-weight: bold; letter-spacing: 4px; color: #ff4757; margin: 10px 0; }
-  </style>
-</head>
-<body>
-
-  <h1>📷 LDR Photobooth</h1>
-
-  <!-- STEP 0 -->
-  <div id="step0" class="step-section active">
-    <h2>เข้าใช้งานตู้ถ่ายรูปคู่</h2>
-    <p>กดสร้างห้องใหม่ หรือกรอกเลขห้อง 4 หลักจากแฟน</p>
-    <div>
-      <button type="button" class="btn" onclick="createRoom()">✨ สร้างห้องถ่ายรูปใหม่</button>
-    </div>
-    <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
-    <div>
-      <input type="text" id="roomInput" placeholder="กรอกรหัสห้อง (เช่น 1234)" maxlength="4">
-      <button type="button" class="btn" style="background: #2ed573;" onclick="joinCustomRoom()">เข้าร่วมห้อง</button>
-    </div>
-  </div>
-
-  <!-- STEP 1 -->
-  <div id="step1" class="step-section">
-    <h2>1. ตั้งค่าและส่งลิงก์ให้แฟน</h2>
-    <div id="roomStatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)</div>
-    
-    <p style="margin-bottom: 0;"><b>รหัสห้องของคุณ:</b></p>
-    <div id="roomDisplay" class="room-code-display">----</div>
-    <button type="button" class="btn" style="background: #70a1ff; padding: 8px 20px; font-size: 15px;" onclick="copyLink()">🔗 คัดลอกลิงก์ส่งให้แฟน</button>
-    
-    <div style="margin-top: 20px;">
-      <label><b>เลือกจำนวนช่อง:</b></label>
-      <select id="slotSelect" onchange="syncConfig()">
-        <option value="3">3 ช่อง (ถ่ายคนละ 3 รูป)</option>
-        <option value="4">4 ช่อง (ถ่ายคนละ 4 รูป)</option>
-        <option value="6">6 ช่อง (ถ่ายคนละ 6 รูป)</option>
-      </select>
-    </div>
-
-    <div>
-      <label><b>เลือก Theme กรอบรูป:</b></label>
-      <div class="theme-options">
-        <div class="theme-card theme-pastel selected" onclick="selectTheme('theme-pastel')">Pastel Yellow 💛</div>
-        <div class="theme-card theme-pink" onclick="selectTheme('theme-pink')">Sweet Pink 💗</div>
-        <div class="theme-card theme-vintage" onclick="selectTheme('theme-vintage')">Vintage Brown 🤎</div>
-        <div class="theme-card theme-dark" onclick="selectTheme('theme-dark')">Minimal Dark 🖤</div>
-      </div>
-    </div>
-
-    <br>
-    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" onclick="requestGoToStep2()" disabled>🔒 รอแฟนเข้าห้องก่อนนะ (1/2 คน)</button>
-  </div>
-
-  <!-- STEP 2 -->
-  <div id="step2" class="step-section">
-    <h2>2. เตรียมตัวถ่ายรูป</h2>
-    <div id="step2StatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเปิดกล้อง... (1/2 คน)</div>
-
-    <div class="camera-container">
-      <div>
-        <h3>คุณ</h3>
-        <div class="camera-box">
-          <video id="myVideo" autoplay playsinline muted></video>
-        </div>
-      </div>
-      <div>
-        <h3>แฟน</h3>
-        <div class="camera-box">
-          <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Partner..." />
-        </div>
-      </div>
-    </div>
-
-    <div id="countdown"></div>
-    <div id="slotProgress" style="font-size: 18px; margin-bottom: 10px;"></div>
-    
-    <button type="button" id="snapBtn" class="btn" onclick="triggerSnap()">📸 กดถ่ายรูป (ใครกดก็ได้)</button>
-  </div>
-
-  <!-- STEP 3 -->
-  <div id="step3" class="step-section">
-    <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
-    <p>แปะสติ๊กเกอร์ พิมพ์ข้อความ เลือกฟอนต์ และย้ายตำแหน่งได้แบบอิสระ!</p>
-
-    <div class="sticker-palette-container">
-      <small><b>เลือกสติ๊กเกอร์แปะกรอบรูป:</b></small>
-      <div class="sticker-palette">
-        <span onclick="sendSticker('❤️')">❤️</span>
-        <span onclick="sendSticker('💖')">💖</span>
-        <span onclick="sendSticker('✨')">✨</span>
-        <span onclick="sendSticker('🌸')">🌸</span>
-        <span onclick="sendSticker('🐻')">🐻</span>
-        <span onclick="sendSticker('🐰')">🐰</span>
-        <span onclick="sendSticker('🎀')">🎀</span>
-        <span onclick="sendSticker('☁️')">☁️</span>
-        <span onclick="sendSticker('🌙')">🌙</span>
-        <span onclick="sendSticker('🐱')">🐱</span>
-        <span onclick="sendSticker('🍓')">🍓</span>
-        <span onclick="sendSticker('🎂')">🎂</span>
-        <span onclick="sendSticker('💌')">💌</span>
-        <span onclick="sendSticker('☘️')">☘️</span>
-        <span onclick="sendSticker('🧸')">🧸</span>
-      </div>
-    </div>
-
-    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-      <input type="text" id="textInput" placeholder="พิมพ์ข้อความใส่กรอบ..." oninput="sendTextChange(this.value)" style="width: 220px;">
-      
-      <select id="fontSelect" onchange="changeFont(this.value)">
-        <option value="font-itim">ฟอนต์น่ารัก (Itim)</option>
-        <option value="font-mali">ฟอนต์เขียนมือ (Mali)</option>
-        <option value="font-charm">ฟอนต์อ่อนช้อย (Charm)</option>
-        <option value="font-prompt">ฟอนต์เรียบง่าย (Prompt)</option>
-      </select>
-    </div>
-
-    <div id="frameCanvasContainer" class="theme-pastel">
-      <div id="photoGrid" class="grid-layout"></div>
-      
-      <div id="frameText" class="draggable-element draggable-text font-itim" style="left: 20%; bottom: 15px;">
-        Distance means so little ❤️
-      </div>
-    </div>
-
-    <br>
-    <button type="button" class="btn" style="background: #2ed573;" onclick="exportImage('jpg')">🖼️ ดาวน์โหลด JPG</button>
-    <button type="button" class="btn" style="background: #ff4757;" onclick="exportPDF()">📄 ดาวน์โหลด PDF</button>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
+<script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    
-    // เพิ่มบล็อกนี้ลงไป: บังคับเชื่อมต่อเข้าห้องใหม่เสมอเมื่อเกิดการโหลด/เน็ตกระตุก
-    socket.on('connect', () => {
-      if (currentRoomId) {
-        socket.emit('join-room', currentRoomId);
-      }
-    });
-
-    let currentRoomId = "";
-    // ... (โค้ดเดิมส่วนอื่นๆ ปล่อยไว้เหมือนเดิม)
     let currentRoomId = "";
     let totalSlots = 3;
     let selectedTheme = "theme-pastel";
@@ -241,6 +15,13 @@
     const snapBtn = document.getElementById('snapBtn');
     const nextStepBtn = document.getElementById('nextStepBtn');
     const countdownEl = document.getElementById('countdown');
+
+    // 🔄 ระบบ Auto Re-join เมื่อเน็ตหลุดหรือ Reconnect
+    socket.on('connect', () => {
+      if (currentRoomId) {
+        socket.emit('join-room', currentRoomId);
+      }
+    });
 
     window.onload = () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -268,13 +49,8 @@
       currentRoomId = id;
       document.getElementById('roomDisplay').innerText = currentRoomId;
       
-      // เปลี่ยนหน้าไป Step 1 ทันทีที่กด ไม่ต้องรอ async
       renderStep('step1');
-
-      // ส่ง Event ไปยัง Server
       socket.emit('join-room', currentRoomId);
-      
-      // ขอสิทธิ์กล้อง
       initCamera();
     }
 
@@ -328,6 +104,7 @@
       alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าห้องเดียวกับคุณทันทีครับ`);
     }
 
+    // 🟢 อัปเดตสถานะจำนวนคนและเปิดใช้งานปุ่มถัดไป
     socket.on('room-status', (data) => {
       const badge1 = document.getElementById('roomStatusBadge');
       const badge2 = document.getElementById('step2StatusBadge');
@@ -337,8 +114,8 @@
       const text = isReady ? `🟢 แฟนอยู่ในห้องแล้ว! (${userInRoomCount}/2 คน)` : `⏳ กำลังรอแฟน... (${userInRoomCount}/2 คน)`;
       const className = isReady ? "status-badge online" : "status-badge waiting";
 
-      if(badge1) { badge1.className = className; badge1.innerText = text; }
-      if(badge2) { badge2.className = className; badge2.innerText = text; }
+      if (badge1) { badge1.className = className; badge1.innerText = text; }
+      if (badge2) { badge2.className = className; badge2.innerText = text; }
 
       if (isReady) {
         nextStepBtn.disabled = false;
@@ -374,6 +151,7 @@
       selectedTheme = config.theme;
     });
 
+    // 🚀 ส่งคำสั่งเปลี่ยนหน้าไปยังอีกฝั่ง
     function requestGoToStep2() { 
       if (userInRoomCount >= 2) {
         socket.emit('change-step', 'step2');
@@ -591,5 +369,3 @@
       if (activeEl) activeEl.classList.add('active');
     }
   </script>
-</body>
-</html>
