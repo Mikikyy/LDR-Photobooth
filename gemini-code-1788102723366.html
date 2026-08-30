@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>LDR Photobooth - Complete Experience</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <style>
+    * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
+    body { background: #f7f8fa; margin: 0; padding: 20px; text-align: center; color: #333; }
+    
+    .step-section { display: none; background: white; max-width: 800px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .step-section.active { display: block; }
+
+    /* Theme Styles */
+    .theme-pastel { background: #ffeaa7; color: #d63031; }
+    .theme-pink { background: #ff758c; color: #ffffff; }
+    .theme-vintage { background: #d7ccc8; color: #4e342e; }
+    .theme-dark { background: #2d3436; color: #dfe6e9; }
+
+    /* Control & Buttons */
+    .btn { padding: 12px 28px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.3s; margin: 5px; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
+    .btn:disabled { background: #ffa4ac; opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    
+    select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; }
+
+    /* Camera Grid */
+    .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
+    video, .partner-preview { width: 320px; height: 240px; background: #222; border-radius: 15px; object-fit: cover; }
+    #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
+
+    /* Final Photostrip Frame */
+    #frameCanvasContainer { display: inline-block; padding: 20px 20px 40px 20px; border-radius: 10px; position: relative; margin: 20px 0; }
+    .grid-layout { display: flex; flex-direction: column; gap: 12px; }
+    .photo-row { display: flex; gap: 12px; justify-content: center; }
+    .photo-row img { width: 160px; height: 120px; object-fit: cover; border-radius: 6px; }
+
+    /* Sticker Selector */
+    .sticker-palette { display: flex; justify-content: center; gap: 15px; font-size: 30px; margin: 15px 0; }
+    .sticker-palette span { cursor: pointer; transition: 0.2s; user-select: none; }
+    .sticker-palette span:hover { transform: scale(1.3); }
+
+    /* Dragable Sticker on Canvas */
+    .draggable-sticker { position: absolute; font-size: 35px; cursor: move; user-select: none; }
+  </style>
+</head>
+<body>
+
+  <h1>📷 LDR Photobooth</h1>
+
+  <div id="step1" class="step-section active">
+    <h2>1. เลือกธีมและจำนวนช่องถ่ายรูป</h2>
+    <p>การเลือกของคุณจะซิงก์ไปยังแฟนแบบ Real-time</p>
+    
+    <div>
+      <label><b>เลือกจำนวนช่อง:</b></label>
+      <select id="slotSelect" onchange="syncConfig()">
+        <option value="3">3 ช่อง (ถ่ายคนละ 3 รูป)</option>
+        <option value="4">4 ช่อง (ถ่ายคนละ 4 รูป)</option>
+        <option value="6">6 ช่อง (ถ่ายคนละ 6 รูป)</option>
+      </select>
+    </div>
+
+    <div>
+      <label><b>เลือก Theme กรอบรูป:</b></label>
+      <select id="themeSelect" onchange="syncConfig()">
+        <option value="theme-pastel">Pastel Yellow 💛</option>
+        <option value="theme-pink">Sweet Pink 💗</option>
+        <option value="theme-vintage">Vintage Brown 🤎</option>
+        <option value="theme-dark">Minimal Dark 🖤</option>
+      </select>
+    </div>
+
+    <br>
+    <button class="btn" onclick="goToStep2()">พร้อมถ่ายรูปแล้ว! ➡️</button>
+  </div>
+
+  <div id="step2" class="step-section">
+    <h2>2. เตรียมตัวถ่ายรูป</h2>
+    <div class="camera-container">
+      <div>
+        <h3>คุณ</h3>
+        <video id="myVideo" autoplay playsinline muted></video>
+      </div>
+      <div>
+        <h3>แฟน</h3>
+        <img id="partnerImg" class="partner-preview" src="https://via.placeholder.com/320x240?text=Waiting+for+Partner..." />
+      </div>
+    </div>
+
+    <div id="countdown"></div>
+    <div id="slotProgress" style="font-size: 18px; margin-bottom: 10px;"></div>
+    
+    <button id="snapBtn" class="btn" onclick="triggerSnap()">📸 กดถ่ายรูป (ใครกดก็ได้)</button>
+  </div>
+
+  <div id="step3" class="step-section">
+    <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
+    <p>คลิกสติ๊กเกอร์เพื่อเพิ่มลงในรูปภาพ และลากวางตามตำแหน่งที่ต้องการได้เลย!</p>
+
+    <div class="sticker-palette">
+      <span onclick="addSticker('❤️')">❤️</span>
+      <span onclick="addSticker('✨')">✨</span>
+      <span onclick="addSticker('🌸')">🌸</span>
+      <span onclick="addSticker('🐻')">🐻</span>
+      <span onclick="addSticker('🎀')">🎀</span>
+      <span onclick="addSticker('👩‍❤️‍👨')">👩‍❤️‍👨</span>
+    </div>
+
+    <div id="frameCanvasContainer" class="theme-pastel">
+      <div id="photoGrid" class="grid-layout"></div>
+      <h3 style="margin-top: 15px; margin-bottom: 0;" id="frameText">Distance means so little ❤️</h3>
+    </div>
+
+    <br>
+    <button class="btn" onclick="exportImage('jpg')">🖼️ ดาวน์โหลด JPG</button>
+    <button class="btn" onclick="exportPDF()">📄 ดาวน์โหลด PDF</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const roomId = "ldr-room-demo";
+    
+    let totalSlots = 3;
+    let selectedTheme = "theme-pastel";
+    let myPhotos = [];
+    let partnerPhotos = [];
+    let currentSlot = 0;
+
+    const myVideo = document.getElementById('myVideo');
+    const snapBtn = document.getElementById('snapBtn');
+    const countdownEl = document.getElementById('countdown');
+
+    // 1. เข้าห้องและดึงกล้อง
+    socket.emit('join-room', roomId);
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { myVideo.srcObject = stream; });
+
+    // 2. ซิงก์การตั้งค่า Config
+    function syncConfig() {
+      const config = {
+        slots: parseInt(document.getElementById('slotSelect').value),
+        theme: document.getElementById('themeSelect').value
+      };
+      socket.emit('update-config', config);
+    }
+
+    socket.on('config-updated', (config) => {
+      totalSlots = config.slots;
+      selectedTheme = config.theme;
+      document.getElementById('slotSelect').value = config.slots;
+      document.getElementById('themeSelect').value = config.theme;
+    });
+
+    function goToStep2() {
+      switchStep('step2');
+    }
+
+    // 3. ระบบกดถ่ายรูป Real-time
+    function triggerSnap() {
+      socket.emit('start-countdown');
+    }
+
+    socket.on('trigger-countdown', () => {
+      snapBtn.disabled = true;
+      snapBtn.innerText = "⏳ กำลังถ่ายรูป...";
+      myPhotos = [];
+      partnerPhotos = [];
+      currentSlot = 0;
+      captureSequence();
+    });
+
+    // วนลูปถ่ายตามจำนวนช่องที่เลือก
+    function captureSequence() {
+      if (currentSlot < totalSlots) {
+        document.getElementById('slotProgress').innerText = `รูปที่ ${currentSlot + 1} / ${totalSlots}`;
+        let count = 3;
+        countdownEl.innerText = count;
+
+        const timer = setInterval(() => {
+          count--;
+          if (count > 0) {
+            countdownEl.innerText = count;
+          } else {
+            clearInterval(timer);
+            countdownEl.innerText = "CHEESE! 📸";
+            
+            // แคปรูป
+            const photoData = captureFrame();
+            myPhotos.push(photoData);
+
+            currentSlot++;
+            setTimeout(captureSequence, 1500); // เว้นช่วง 1.5 วินาทีต่อรูป
+          }
+        }, 1000);
+      } else {
+        countdownEl.innerText = "เรียบร้อย! ✨";
+        socket.emit('send-photos', myPhotos);
+        checkAndComplete();
+      }
+    }
+
+    function captureFrame() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 320; canvas.height = 240;
+      canvas.getContext('2d').drawImage(myVideo, 0, 0, 320, 240);
+      return canvas.toDataURL('image/jpeg');
+    }
+
+    socket.on('receive-partner-photos', (photos) => {
+      partnerPhotos = photos;
+      checkAndComplete();
+    });
+
+    function checkAndComplete() {
+      if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
+        renderPhotostrip();
+        switchStep('step3');
+      }
+    }
+
+    // 4. เรนเดอร์ Photostrip และตกแต่ง
+    function renderPhotostrip() {
+      const container = document.getElementById('frameCanvasContainer');
+      const grid = document.getElementById('photoGrid');
+      container.className = selectedTheme;
+      grid.innerHTML = "";
+
+      for (let i = 0; i < totalSlots; i++) {
+        const row = document.createElement('div');
+        row.className = "photo-row";
+
+        const imgMine = document.createElement('img');
+        imgMine.src = myPhotos[i];
+
+        const imgPartner = document.createElement('img');
+        imgPartner.src = partnerPhotos[i];
+
+        row.appendChild(imgMine);
+        row.appendChild(imgPartner);
+        grid.appendChild(row);
+      }
+    }
+
+    // ระบบเพิ่มสติ๊กเกอร์ & ลากวาง (Drag & Drop)
+    function addSticker(emoji) {
+      const sticker = document.createElement('div');
+      sticker.className = 'draggable-sticker';
+      sticker.innerText = emoji;
+      sticker.style.left = '50%';
+      sticker.style.top = '50%';
+      
+      makeDraggable(sticker);
+      document.getElementById('frameCanvasContainer').appendChild(sticker);
+    }
+
+    function makeDraggable(elmnt) {
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      elmnt.onmousedown = dragMouseDown;
+
+      function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+
+    // 5. Export JPG / PDF
+    function exportImage(format) {
+      const element = document.getElementById('frameCanvasContainer');
+      html2canvas(element).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `LDR-Photobooth.${format}`;
+        link.href = canvas.toDataURL('image/jpeg');
+        link.click();
+      });
+    }
+
+    function exportPDF() {
+      const element = document.getElementById('frameCanvasContainer');
+      html2canvas(element).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        pdf.addImage(imgData, 'PNG', 15, 15, 180, 0);
+        pdf.save('LDR-Photobooth.pdf');
+      });
+    }
+
+    function switchStep(stepId) {
+      document.querySelectorAll('.step-section').forEach(el => el.classList.remove('active'));
+      document.getElementById(stepId).classList.add('active');
+    }
+  </script>
+</body>
+</html>
