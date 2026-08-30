@@ -30,7 +30,15 @@
     input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; text-align: center; }
 
     .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
-    video, .partner-preview { width: 320px; height: 240px; background: #222; border-radius: 15px; object-fit: cover; }
+    video, .partner-preview { 
+      width: 320px; 
+      height: 240px; 
+      background: #222; 
+      border-radius: 15px; 
+      object-fit: cover; 
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
     video { transform: scaleX(-1); }
 
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
@@ -211,7 +219,7 @@
 
     function initCamera() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 } } })
+        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } })
           .then(stream => { 
             myVideo.srcObject = stream;
             startLiveStreaming();
@@ -222,20 +230,24 @@
 
     function startLiveStreaming() {
       if (streamInterval) clearInterval(streamInterval);
+      
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 240;
-      tempCanvas.height = 180;
+      tempCanvas.width = 640;
+      tempCanvas.height = 480;
       const ctx = tempCanvas.getContext('2d');
 
-      // ส่งภาพเฟรมกล้องทุกๆ 200ms เพื่อป้องกัน Socket รับภาระหนักเกินไปจนหลุด
       streamInterval = setInterval(() => {
         if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
           isSendingFrame = true;
-          ctx.drawImage(myVideo, 0, 0, 240, 180);
-          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.3));
-          setTimeout(() => { isSendingFrame = false; }, 150);
+          
+          ctx.drawImage(myVideo, 0, 0, 640, 480);
+          const frameData = tempCanvas.toDataURL('image/jpeg', 0.7);
+          
+          socket.emit('stream-frame', frameData);
+          
+          setTimeout(() => { isSendingFrame = false; }, 100);
         }
-      }, 200);
+      }, 150);
     }
 
     socket.on('receive-partner-stream', (frameData) => {
@@ -337,9 +349,15 @@
 
     function captureFrame() {
       const canvas = document.createElement('canvas');
-      canvas.width = 320; canvas.height = 240;
-      canvas.getContext('2d').drawImage(myVideo, 0, 0, 320, 240);
-      return canvas.toDataURL('image/jpeg', 0.6);
+      canvas.width = 1280; 
+      canvas.height = 960;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.translate(1280, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(myVideo, 0, 0, 1280, 960);
+      
+      return canvas.toDataURL('image/jpeg', 0.85);
     }
 
     socket.on('receive-partner-photos', (photos) => {
