@@ -14,13 +14,11 @@
     .step-section { display: none; background: white; max-width: 800px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .step-section.active { display: block; }
 
-    /* Theme Styles */
     .theme-pastel { background: #ffeaa7; color: #d63031; border: 4px solid #fdcb6e; }
     .theme-pink { background: #ff758c; color: #ffffff; border: 4px solid #ff758c; }
     .theme-vintage { background: #d7ccc8; color: #4e342e; border: 4px solid #8d6e63; }
     .theme-dark { background: #2d3436; color: #dfe6e9; border: 4px solid #636e72; }
 
-    /* Theme Cards Preview */
     .theme-options { display: flex; justify-content: center; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
     .theme-card { padding: 15px 20px; border-radius: 12px; cursor: pointer; border: 3px solid transparent; font-weight: bold; transition: 0.2s; }
     .theme-card.selected { border-color: #ff4757; transform: scale(1.05); }
@@ -48,6 +46,7 @@
     .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
     .online { background: #e3fcce; color: #2ecc71; }
     .waiting { background: #ffeaa7; color: #d63031; }
+    .room-code-display { font-size: 36px; font-weight: bold; letter-spacing: 4px; color: #ff4757; margin: 10px 0; }
   </style>
 </head>
 <body>
@@ -57,13 +56,13 @@
   <!-- STEP 0 -->
   <div id="step0" class="step-section active">
     <h2>เข้าใช้งานตู้ถ่ายรูปคู่</h2>
-    <p>สร้างห้องใหม่ หรือกรอกรหัสห้องเพื่อถ่ายรูปกับแฟน</p>
+    <p>กดสร้างห้องใหม่ หรือกรอกเลขห้อง 4 หลักจากแฟน</p>
     <div>
       <button class="btn" onclick="createRoom()">✨ สร้างห้องถ่ายรูปใหม่</button>
     </div>
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
     <div>
-      <input type="text" id="roomInput" placeholder="กรอกรหัสห้อง (เช่น 1234)">
+      <input type="text" id="roomInput" placeholder="กรอกรหัสห้อง (เช่น 1234)" maxlength="4">
       <button class="btn" style="background: #2ed573;" onclick="joinCustomRoom()">เข้าร่วมห้อง</button>
     </div>
   </div>
@@ -72,9 +71,10 @@
   <div id="step1" class="step-section">
     <h2>1. เลือกธีมและจำนวนช่องถ่ายรูป</h2>
     <div id="roomStatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)</div>
-    <br>
-    <p><b>ลิงก์ห้องของคุณ:</b> <span id="shareLink" style="color: #ff4757; font-weight: bold;"></span></p>
-    <button class="btn" style="background: #70a1ff; padding: 6px 15px; font-size: 14px;" onclick="copyLink()">📋 คัดลอกลิงก์ส่งให้แฟน</button>
+    
+    <p style="margin-bottom: 0;"><b>รหัสห้องของคุณ:</b></p>
+    <div id="roomDisplay" class="room-code-display">----</div>
+    <button class="btn" style="background: #70a1ff; padding: 6px 15px; font-size: 14px;" onclick="copyCode()">📋 คัดลอกรหัสห้องส่งให้แฟน</button>
     
     <div style="margin-top: 20px;">
       <label><b>เลือกจำนวนช่อง:</b></label>
@@ -149,7 +149,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    let roomId = "";
+    let currentRoomId = "";
     let totalSlots = 3;
     let selectedTheme = "theme-pastel";
     let myPhotos = [];
@@ -160,51 +160,35 @@
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
-    window.addEventListener('load', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const roomParam = urlParams.get('room');
-      if (roomParam) {
-        joinRoom(roomParam);
-      }
-    });
-
     function createRoom() {
-      const randomRoom = Math.floor(1000 + Math.random() * 9000).toString();
-      window.history.pushState({}, '', `?room=${randomRoom}`);
-      joinRoom(randomRoom);
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      joinRoom(code);
     }
 
     function joinCustomRoom() {
-      const input = document.getElementById('roomInput').value.trim();
-      if (input) {
-        window.history.pushState({}, '', `?room=${input}`);
-        joinRoom(input);
+      const code = document.getElementById('roomInput').value.trim();
+      if (code.length === 4) {
+        joinRoom(code);
+      } else {
+        alert("กรุณากรอกรหัสห้อง 4 หลักให้ถูกต้องครับ");
       }
     }
 
     function joinRoom(id) {
-      roomId = id;
-      socket.emit('join-room', roomId);
-      
-      const fullLink = `${window.location.origin}/?room=${roomId}`;
-      document.getElementById('shareLink').innerText = fullLink;
+      currentRoomId = id;
+      document.getElementById('roomDisplay').innerText = currentRoomId;
+      socket.emit('join-room', currentRoomId);
       
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => { myVideo.srcObject = stream; })
-        .catch(err => console.log("Camera error:", err));
+        .catch(err => console.log("Camera access error:", err));
 
       renderStep('step1');
-
-      // เช็กสถานะห้องซ้ำทุกๆ 2 วินาทีเพื่อให้แน่ใจว่าทั้งคู่ซิงก์กันเสมอ
-      setInterval(() => {
-        if(roomId) socket.emit('check-status');
-      }, 2000);
     }
 
-    function copyLink() {
-      const linkText = document.getElementById('shareLink').innerText;
-      navigator.clipboard.writeText(linkText);
-      alert("คัดลอกลิงก์ห้องแล้ว! ส่งให้แฟนกดเข้าลิงก์นี้ได้เลยครับ");
+    function copyCode() {
+      navigator.clipboard.writeText(currentRoomId);
+      alert(`คัดลอกรหัสห้อง ${currentRoomId} แล้ว! ส่งรหัสนี้ให้แฟนพิมพ์เข้าห้องได้เลยครับ`);
     }
 
     socket.on('room-status', (data) => {
@@ -213,12 +197,12 @@
       
       if (data.userCount >= 2) {
         badge.className = "status-badge online";
-        badge.innerText = `🟢 แฟนเข้ามาในห้องแล้ว! (${data.userCount}/2 คน)`;
+        badge.innerText = `🟢 แฟนเข้ามาในห้องแล้ว! (2/2 คน)`;
         startBtn.disabled = false;
         startBtn.innerText = "พร้อมถ่ายรูปแล้ว! ➡️";
       } else {
         badge.className = "status-badge waiting";
-        badge.innerText = `⏳ กำลังรอแฟนเข้าห้อง... (${data.userCount}/2 คน)`;
+        badge.innerText = `⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)`;
         startBtn.disabled = true;
         startBtn.innerText = "รอแฟนเข้าห้องก่อนนะ...";
       }
