@@ -154,8 +154,6 @@
     <br>
     <button type="button" class="btn" style="background: #2ed573;" onclick="exportImage('jpg')">🖼️ ดาวน์โหลด JPG</button>
     <button type="button" class="btn" style="background: #ff4757;" onclick="exportPDF()">📄 ดาวน์โหลด PDF</button>
-    
-    <!-- ปุ่มกลับไปหน้าถ่ายรูปเพื่อกดถ่ายใหม่ -->
     <button type="button" class="btn" style="background: #ffa502;" onclick="retakePhotos()">🔄 ถ่ายใหม่อีกครั้ง</button>
   </div>
 
@@ -223,8 +221,8 @@
         navigator.mediaDevices.getUserMedia({ 
           video: { 
             facingMode: "user",
-            width: { ideal: 640 }, 
-            height: { ideal: 480 } 
+            width: { ideal: 480 }, 
+            height: { ideal: 360 } 
           } 
         })
         .then(stream => { 
@@ -246,19 +244,20 @@
       if (streamInterval) clearInterval(streamInterval);
       
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 480;
-      tempCanvas.height = 360;
+      tempCanvas.width = 320;
+      tempCanvas.height = 240;
       const ctx = tempCanvas.getContext('2d');
 
+      // ปรับความถี่ส่งเฟรมเป็น 200ms เพื่อป้องกันการดีเลย์ของฝั่งเน็ตช้า
       streamInterval = setInterval(() => {
         if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
           isSendingFrame = true;
-          ctx.drawImage(myVideo, 0, 0, 480, 360);
-          const frameData = tempCanvas.toDataURL('image/jpeg', 0.6);
+          ctx.drawImage(myVideo, 0, 0, 320, 240);
+          const frameData = tempCanvas.toDataURL('image/jpeg', 0.5);
           socket.emit('stream-frame', frameData);
-          setTimeout(() => { isSendingFrame = false; }, 120);
+          setTimeout(() => { isSendingFrame = false; }, 200);
         }
-      }, 120);
+      }, 200);
     }
 
     socket.on('receive-partner-stream', (frameData) => {
@@ -275,12 +274,7 @@
       socket.emit('change-step', 'step2');
     }
 
-    function goToStep3() {
-      socket.emit('change-step', 'step3');
-    }
-
     function retakePhotos() {
-      // รีเซ็ตค่าการถ่ายรูป และสั่งให้ย้ายกลับหน้า 2 พร้อมกันทั้งสองฝั่ง
       snapBtn.disabled = false;
       snapBtn.innerText = "📸 กดถ่ายรูป (ใครกดก็ได้)";
       countdownEl.innerText = "";
@@ -374,35 +368,33 @@
             
             myPhotos.push(captureFrame());
             currentSlot++;
-            setTimeout(captureSequence, 1500);
+            setTimeout(captureSequence, 1200);
           }
         }, 1000);
       } else {
         countdownEl.innerText = "เรียบร้อย! ✨";
         socket.emit('send-photos', myPhotos);
-        checkAndComplete();
+        // ถ่ายเสร็จสั่งย้ายหน้าทันทีทั้งคู่โดยไม่ค้าง
+        setTimeout(() => {
+          socket.emit('change-step', 'step3');
+        }, 500);
       }
     }
 
     function captureFrame() {
       const canvas = document.createElement('canvas');
-      canvas.width = 1280; 
-      canvas.height = 960;
+      canvas.width = 960; 
+      canvas.height = 720;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(myVideo, 0, 0, 1280, 960);
-      return canvas.toDataURL('image/jpeg', 0.85);
+      ctx.drawImage(myVideo, 0, 0, 960, 720);
+      return canvas.toDataURL('image/jpeg', 0.8);
     }
 
     socket.on('receive-partner-photos', (photos) => {
       partnerPhotos = photos;
-      checkAndComplete();
+      // อัปเดตรูปถ่ายของฝั่งแฟนเมื่อรับข้อมูลเสร็จ
+      renderPhotostrip();
     });
-
-    function checkAndComplete() {
-      if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
-        goToStep3();
-      }
-    }
 
     function renderPhotostrip() {
       const container = document.getElementById('frameCanvasContainer');
@@ -410,7 +402,6 @@
       container.className = selectedTheme;
       grid.innerHTML = "";
 
-      // ลบสติ๊กเกอร์เก่าออกเมื่อถ่ายใหม่
       document.querySelectorAll('.draggable-sticker').forEach(st => st.remove());
 
       for (let i = 0; i < totalSlots; i++) {
@@ -418,10 +409,10 @@
         row.className = "photo-row";
 
         const imgMine = document.createElement('img');
-        imgMine.src = myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/></svg>';
+        imgMine.src = myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23aaa">Loading...</text></svg>';
 
         const imgPartner = document.createElement('img');
-        imgPartner.src = partnerPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/></svg>';
+        imgPartner.src = partnerPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23aaa">Loading...</text></svg>';
 
         row.appendChild(imgMine);
         row.appendChild(imgPartner);
