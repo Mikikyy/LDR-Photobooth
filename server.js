@@ -5,7 +5,12 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 1e7 });
+
+const io = new Server(server, { 
+  maxHttpBufferSize: 1e7,
+  pingTimeout: 10000,
+  pingInterval: 5000
+});
 
 app.use(express.static(__dirname));
 
@@ -17,22 +22,20 @@ const roomConfigs = {};
 
 io.on('connection', (socket) => {
   socket.on('join-room', (roomId) => {
-    // ออกจากห้องเดิมก่อนถ้ามี
-    if (socket.roomId) {
-      socket.leave(socket.roomId);
-    }
+    if (socket.roomId) socket.leave(socket.roomId);
 
     socket.join(roomId);
     socket.roomId = roomId;
 
     if (!roomConfigs[roomId]) {
-      roomConfigs[roomId] = { slots: 3, theme: 'theme-pastel' };
+      roomConfigs[roomId] = { slots: 3, theme: 'theme-pastel', currentStep: 'step1' };
     }
 
-    // ฟังก์ชันส่งจำนวนคนจริงในห้อง
     const sendRoomStatus = () => {
       const room = io.sockets.adapter.rooms.get(roomId);
       const userCount = room ? room.size : 0;
+      
+      // ส่งข้อมูลห้อง พร้อม Step ปัจจุบันให้สมาชิกทุกคน
       io.to(roomId).emit('room-status', { 
         userCount: userCount, 
         config: roomConfigs[roomId] 
@@ -42,37 +45,27 @@ io.on('connection', (socket) => {
     sendRoomStatus();
 
     socket.on('change-step', (stepId) => {
+      if (roomConfigs[roomId]) {
+        roomConfigs[roomId].currentStep = stepId;
+      }
       io.to(roomId).emit('navigate-to-step', stepId);
     });
 
     socket.on('update-config', (config) => {
-      roomConfigs[roomId] = config;
+      if (roomConfigs[roomId]) {
+        roomConfigs[roomId].slots = config.slots;
+        roomConfigs[roomId].theme = config.theme;
+      }
       io.to(roomId).emit('config-updated', config);
     });
 
-    socket.on('start-countdown', () => {
-      io.to(roomId).emit('trigger-countdown');
-    });
+    socket.on('start-countdown', () => io.to(roomId).emit('trigger-countdown'));
+    socket.on('send-photos', (photos) => socket.to(roomId).emit('receive-partner-photos', photos));
+    socket.on('add-sticker', (data) => io.to(roomId).emit('sticker-added', data));
+    socket.on('update-sticker-pos', (data) => io.to(roomId).emit('sticker-moved', data));
+    socket.on('update-frame-text', (text) => io.to(roomId).emit('frame-text-updated', text));
 
-    socket.on('send-photos', (photos) => {
-      socket.to(roomId).emit('receive-partner-photos', photos);
-    });
-
-    socket.on('add-sticker', (stickerData) => {
-      io.to(roomId).emit('sticker-added', stickerData);
-    });
-
-    socket.on('update-sticker-pos', (data) => {
-      io.to(roomId).emit('sticker-moved', data);
-    });
-
-    socket.on('update-frame-text', (text) => {
-      io.to(roomId).emit('frame-text-updated', text);
-    });
-
-    socket.on('disconnect', () => {
-      sendRoomStatus();
-    });
+    socket.on('disconnect', () => sendRoomStatus());
   });
 });
 
