@@ -21,8 +21,19 @@ app.get('/', (req, res) => {
 const roomConfigs = {};
 
 io.on('connection', (socket) => {
+  const sendRoomStatus = (roomId) => {
+    const room = io.sockets.adapter.rooms.get(roomId);
+    const userCount = room ? room.size : 0;
+    io.to(roomId).emit('room-status', { 
+      userCount: userCount, 
+      config: roomConfigs[roomId] 
+    });
+  };
+
   socket.on('join-room', (roomId) => {
-    if (socket.roomId) socket.leave(socket.roomId);
+    if (socket.roomId && socket.roomId !== roomId) {
+      socket.leave(socket.roomId);
+    }
 
     socket.join(roomId);
     socket.roomId = roomId;
@@ -31,41 +42,57 @@ io.on('connection', (socket) => {
       roomConfigs[roomId] = { slots: 3, theme: 'theme-pastel', currentStep: 'step1' };
     }
 
-    const sendRoomStatus = () => {
-      const room = io.sockets.adapter.rooms.get(roomId);
-      const userCount = room ? room.size : 0;
-      
-      // ส่งข้อมูลห้อง พร้อม Step ปัจจุบันให้สมาชิกทุกคน
-      io.to(roomId).emit('room-status', { 
-        userCount: userCount, 
-        config: roomConfigs[roomId] 
-      });
-    };
+    sendRoomStatus(roomId);
+  });
 
-    sendRoomStatus();
+  // 🎥 เพิ่มส่วนส่งสตรีมภาพกล้องให้แฟน
+  socket.on('stream-frame', (frameData) => {
+    if (socket.roomId) {
+      socket.to(socket.roomId).emit('receive-partner-stream', frameData);
+    }
+  });
 
-    socket.on('change-step', (stepId) => {
-      if (roomConfigs[roomId]) {
-        roomConfigs[roomId].currentStep = stepId;
-      }
-      io.to(roomId).emit('navigate-to-step', stepId);
-    });
+  socket.on('change-step', (stepId) => {
+    if (socket.roomId && roomConfigs[socket.roomId]) {
+      roomConfigs[socket.roomId].currentStep = stepId;
+    }
+    if (socket.roomId) {
+      io.to(socket.roomId).emit('navigate-to-step', stepId);
+    }
+  });
 
-    socket.on('update-config', (config) => {
-      if (roomConfigs[roomId]) {
-        roomConfigs[roomId].slots = config.slots;
-        roomConfigs[roomId].theme = config.theme;
-      }
-      io.to(roomId).emit('config-updated', config);
-    });
+  socket.on('update-config', (config) => {
+    if (socket.roomId && roomConfigs[socket.roomId]) {
+      roomConfigs[socket.roomId].slots = config.slots;
+      roomConfigs[socket.roomId].theme = config.theme;
+    }
+    if (socket.roomId) {
+      io.to(socket.roomId).emit('config-updated', config);
+    }
+  });
 
-    socket.on('start-countdown', () => io.to(roomId).emit('trigger-countdown'));
-    socket.on('send-photos', (photos) => socket.to(roomId).emit('receive-partner-photos', photos));
-    socket.on('add-sticker', (data) => io.to(roomId).emit('sticker-added', data));
-    socket.on('update-sticker-pos', (data) => io.to(roomId).emit('sticker-moved', data));
-    socket.on('update-frame-text', (text) => io.to(roomId).emit('frame-text-updated', text));
+  socket.on('start-countdown', () => {
+    if (socket.roomId) io.to(socket.roomId).emit('trigger-countdown');
+  });
 
-    socket.on('disconnect', () => sendRoomStatus());
+  socket.on('send-photos', (photos) => {
+    if (socket.roomId) socket.to(socket.roomId).emit('receive-partner-photos', photos);
+  });
+
+  socket.on('add-sticker', (data) => {
+    if (socket.roomId) io.to(socket.roomId).emit('sticker-added', data);
+  });
+
+  socket.on('update-sticker-pos', (data) => {
+    if (socket.roomId) io.to(socket.roomId).emit('sticker-moved', data);
+  });
+
+  socket.on('update-frame-text', (text) => {
+    if (socket.roomId) io.to(socket.roomId).emit('frame-text-updated', text);
+  });
+
+  socket.on('disconnect', () => {
+    if (socket.roomId) sendRoomStatus(socket.roomId);
   });
 });
 
