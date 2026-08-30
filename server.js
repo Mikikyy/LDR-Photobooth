@@ -21,13 +21,23 @@ app.get('/', (req, res) => {
 const roomConfigs = {};
 
 io.on('connection', (socket) => {
+
+  // ฟังก์ชันกระจายสถานะห้องให้ทุกคนในห้องรับรู้พร้อมกัน
   const sendRoomStatus = (roomId) => {
     const room = io.sockets.adapter.rooms.get(roomId);
     const userCount = room ? room.size : 0;
+
+    // อัปเดตจำนวนคนให้ทุกคนในห้อง
     io.to(roomId).emit('room-status', { 
       userCount: userCount, 
       config: roomConfigs[roomId] 
     });
+
+    // 🚀 ถ้าคนครบ 2 คนแล้ว และยังอยู่ที่ step1 ให้สั่งพาเด้งไป step2 พร้อมกันอัตโนมัติ
+    if (userCount >= 2 && roomConfigs[roomId] && roomConfigs[roomId].currentStep === 'step1') {
+      roomConfigs[roomId].currentStep = 'step2';
+      io.to(roomId).emit('navigate-to-step', 'step2');
+    }
   };
 
   socket.on('join-room', (roomId) => {
@@ -45,7 +55,7 @@ io.on('connection', (socket) => {
     sendRoomStatus(roomId);
   });
 
-  // 🎥 เพิ่มส่วนส่งสตรีมภาพกล้องให้แฟน
+  // ส่งสตรีมภาพกล้องให้แฟนแบบ Real-time
   socket.on('stream-frame', (frameData) => {
     if (socket.roomId) {
       socket.to(socket.roomId).emit('receive-partner-stream', frameData);
@@ -55,8 +65,6 @@ io.on('connection', (socket) => {
   socket.on('change-step', (stepId) => {
     if (socket.roomId && roomConfigs[socket.roomId]) {
       roomConfigs[socket.roomId].currentStep = stepId;
-    }
-    if (socket.roomId) {
       io.to(socket.roomId).emit('navigate-to-step', stepId);
     }
   });
@@ -65,8 +73,6 @@ io.on('connection', (socket) => {
     if (socket.roomId && roomConfigs[socket.roomId]) {
       roomConfigs[socket.roomId].slots = config.slots;
       roomConfigs[socket.roomId].theme = config.theme;
-    }
-    if (socket.roomId) {
       io.to(socket.roomId).emit('config-updated', config);
     }
   });
@@ -92,7 +98,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (socket.roomId) sendRoomStatus(socket.roomId);
+    if (socket.roomId) {
+      const roomToUpdate = socket.roomId;
+      setTimeout(() => sendRoomStatus(roomToUpdate), 500);
+    }
   });
 });
 
