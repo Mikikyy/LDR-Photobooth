@@ -37,7 +37,6 @@
       border-radius: 15px; 
       object-fit: cover; 
     }
-    /* ใช้ Mirror สลับภาพเฉพาะตัว Video เราเอง */
     video { transform: scaleX(-1); }
 
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
@@ -105,7 +104,7 @@
     </div>
 
     <br>
-    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
+    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" onclick="goToStep2()" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
   </div>
 
   <!-- STEP 2 -->
@@ -128,6 +127,11 @@
     <div id="slotProgress" style="font-size: 18px; margin-bottom: 10px;"></div>
     
     <button type="button" id="snapBtn" class="btn" onclick="triggerSnap()">📸 กดถ่ายรูป (ใครกดก็ได้)</button>
+    
+    <!-- เพิ่มปุ่มทางเลือกหากถ่ายเสร็จแล้วระบบไม่สลับไปให้อัตโนมัติ -->
+    <div style="margin-top: 15px;">
+      <button type="button" id="manualEditBtn" class="btn" style="background: #1e90ff; display: none;" onclick="goToStep3()">🎨 ถ่ายเสร็จแล้ว ไปหน้าแต่งรูปกันเลย! ➡️</button>
+    </div>
   </div>
 
   <!-- STEP 3 -->
@@ -251,13 +255,9 @@
       streamInterval = setInterval(() => {
         if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
           isSendingFrame = true;
-          
-          // วาดภาพตามทิศทางปกติ เพื่อให้อีกฝั่งเห็นหน้าเราตรงๆ แบบไม่กลับด้าน
           ctx.drawImage(myVideo, 0, 0, 480, 360);
-
           const frameData = tempCanvas.toDataURL('image/jpeg', 0.6);
           socket.emit('stream-frame', frameData);
-          
           setTimeout(() => { isSendingFrame = false; }, 120);
         }
       }, 120);
@@ -271,6 +271,14 @@
       const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
       navigator.clipboard.writeText(fullUrl);
       alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าห้องถ่ายรูปกับคุณทันทีครับ`);
+    }
+
+    function goToStep2() {
+      socket.emit('change-step', 'step2');
+    }
+
+    function goToStep3() {
+      socket.emit('change-step', 'step3');
     }
 
     socket.on('room-status', (data) => {
@@ -323,6 +331,9 @@
 
     socket.on('navigate-to-step', (stepId) => {
       renderStep(stepId);
+      if(stepId === 'step3') {
+        renderPhotostrip();
+      }
     });
 
     function triggerSnap() { socket.emit('start-countdown'); }
@@ -330,6 +341,7 @@
     socket.on('trigger-countdown', () => {
       snapBtn.disabled = true;
       snapBtn.innerText = "⏳ กำลังถ่ายรูป...";
+      document.getElementById('manualEditBtn').style.display = 'none';
       myPhotos = []; partnerPhotos = []; currentSlot = 0;
       captureSequence();
     });
@@ -356,6 +368,7 @@
       } else {
         countdownEl.innerText = "เรียบร้อย! ✨";
         socket.emit('send-photos', myPhotos);
+        document.getElementById('manualEditBtn').style.display = 'inline-block';
         checkAndComplete();
       }
     }
@@ -364,11 +377,8 @@
       const canvas = document.createElement('canvas');
       canvas.width = 1280; 
       canvas.height = 960;
-      
       const ctx = canvas.getContext('2d');
-      // เก็บภาพต้นฉบับคุณภาพสูงเพื่อทำ Photostrip คมชัด
       ctx.drawImage(myVideo, 0, 0, 1280, 960);
-      
       return canvas.toDataURL('image/jpeg', 0.85);
     }
 
@@ -379,8 +389,7 @@
 
     function checkAndComplete() {
       if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
-        renderPhotostrip();
-        renderStep('step3');
+        goToStep3();
       }
     }
 
@@ -395,10 +404,10 @@
         row.className = "photo-row";
 
         const imgMine = document.createElement('img');
-        imgMine.src = myPhotos[i];
+        imgMine.src = myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/></svg>';
 
         const imgPartner = document.createElement('img');
-        imgPartner.src = partnerPhotos[i];
+        imgPartner.src = partnerPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/></svg>';
 
         row.appendChild(imgMine);
         row.appendChild(imgPartner);
