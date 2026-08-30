@@ -35,7 +35,6 @@ io.on('connection', (socket) => {
       const room = io.sockets.adapter.rooms.get(roomId);
       const userCount = room ? room.size : 0;
       
-      // ส่งข้อมูลห้อง พร้อม Step ปัจจุบันให้สมาชิกทุกคน
       io.to(roomId).emit('room-status', { 
         userCount: userCount, 
         config: roomConfigs[roomId] 
@@ -43,6 +42,11 @@ io.on('connection', (socket) => {
     };
 
     sendRoomStatus();
+
+    // ส่งภาพกล้องสด Real-Time ระหว่างกัน
+    socket.on('stream-frame', (frameData) => {
+      socket.to(roomId).emit('receive-partner-stream', frameData);
+    });
 
     socket.on('change-step', (stepId) => {
       if (roomConfigs[roomId]) {
@@ -61,9 +65,13 @@ io.on('connection', (socket) => {
 
     socket.on('start-countdown', () => io.to(roomId).emit('trigger-countdown'));
     socket.on('send-photos', (photos) => socket.to(roomId).emit('receive-partner-photos', photos));
+    
+    // ตกแต่ง
     socket.on('add-sticker', (data) => io.to(roomId).emit('sticker-added', data));
     socket.on('update-sticker-pos', (data) => io.to(roomId).emit('sticker-moved', data));
     socket.on('update-frame-text', (text) => io.to(roomId).emit('frame-text-updated', text));
+    socket.on('update-font-style', (fontClass) => io.to(roomId).emit('font-style-updated', fontClass));
+    socket.on('update-text-pos', (pos) => io.to(roomId).emit('text-pos-moved', pos));
 
     socket.on('disconnect', () => sendRoomStatus());
   });
