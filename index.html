@@ -7,35 +7,84 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
-  <!-- Google Fonts สำหรับเปลี่ยนสไตล์ตัวอักษร -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Charm:wght@700&family=Itim&family=Mali:ital,wght@0,500;1,500&family=Prompt:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
-   /* กำหนดขนาดกรอบกล้องให้เป็นสัดส่วน 4:3 และครอบตัดไม่ให้ยืด */
-.camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
-.camera-box { 
-  width: 320px; 
-  height: 240px; 
-  background: #222; 
-  border-radius: 15px; 
-  overflow: hidden; 
-  position: relative; 
-}
+    * { box-sizing: border-box; }
+    body { background: #f7f8fa; margin: 0; padding: 20px; text-align: center; color: #333; font-family: 'Prompt', sans-serif; }
+    
+    .step-section { display: none; background: white; max-width: 800px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .step-section.active { display: block; }
 
-/* ทั้ง video กล้องตัวเอง และ img กล้องแฟน จะโดนครอบตัดสัดส่วนอย่างสมบูรณ์ ไม่ยืดไม่แบนแน่นอน */
-.camera-box video, 
-.camera-box img, 
-.partner-preview { 
-  width: 100% !important; 
-  height: 100% !important; 
-  object-fit: cover !important; 
-  display: block;
-}
+    .theme-pastel { background: #ffeaa7; color: #d63031; border: 4px solid #fdcb6e; }
+    .theme-pink { background: #ff758c; color: #ffffff; border: 4px solid #ff758c; }
+    .theme-vintage { background: #d7ccc8; color: #4e342e; border: 4px solid #8d6e63; }
+    .theme-dark { background: #2d3436; color: #dfe6e9; border: 4px solid #636e72; }
 
-video { transform: scaleX(-1); } /* กลับด้านกล้องตัวเองแบบกระจกเงา */
-.partner-preview { transform: none; }
+    .theme-options { display: flex; justify-content: center; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
+    .theme-card { padding: 15px 20px; border-radius: 12px; cursor: pointer; border: 3px solid transparent; font-weight: bold; transition: 0.2s; }
+    .theme-card.selected { border-color: #ff4757; transform: scale(1.05); }
+
+    .btn { padding: 12px 28px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.3s; margin: 5px; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
+    .btn:disabled { background: #ccc !important; cursor: not-allowed !important; transform: none !important; box-shadow: none !important; }
+
+    input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; text-align: center; }
+
+    /* แก้ปัญหาภาพยืดฝั่งแฟน & กล้องตัวเอง */
+    .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
+    .camera-box { 
+      width: 320px; 
+      height: 240px; 
+      background: #222; 
+      border-radius: 15px; 
+      overflow: hidden; 
+      position: relative; 
+    }
+    .camera-box video, 
+    .camera-box img, 
+    .partner-preview { 
+      width: 100% !important; 
+      height: 100% !important; 
+      object-fit: cover !important; 
+      display: block;
+    }
+    video { transform: scaleX(-1); }
+    .partner-preview { transform: none; }
+
+    #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
+
+    /* กรอบรูปถ่าย */
+    #frameCanvasContainer { display: inline-block; padding: 20px 20px 60px 20px; border-radius: 15px; position: relative; margin: 20px 0; min-width: 380px; overflow: hidden; }
+    .grid-layout { display: flex; flex-direction: column; gap: 12px; }
+    .photo-row { display: flex; gap: 12px; justify-content: center; }
+    .photo-row img { width: 170px; height: 125px; object-fit: cover; border-radius: 6px; }
+
+    /* คลังสติ๊กเกอร์ */
+    .sticker-palette-container { background: #f1f2f6; padding: 12px; border-radius: 15px; margin: 15px 0; }
+    .sticker-palette { display: flex; justify-content: center; gap: 12px; font-size: 28px; flex-wrap: wrap; }
+    .sticker-palette span { cursor: pointer; transition: 0.15s; user-select: none; padding: 4px; }
+    .sticker-palette span:hover { transform: scale(1.3); }
+
+    /* สติ๊กเกอร์ & ข้อความแบบลากได้ */
+    .draggable-element { position: absolute; cursor: move; user-select: none; touch-action: none; will-change: transform; }
+    .draggable-sticker { font-size: 38px; }
+    
+    /* สไตล์ฟอนต์ */
+    .font-itim { font-family: 'Itim', cursive; }
+    .font-mali { font-family: 'Mali', cursive; }
+    .font-charm { font-family: 'Charm', cursive; }
+    .font-prompt { font-family: 'Prompt', sans-serif; }
+
+    .draggable-text { font-size: 22px; font-weight: bold; width: max-content; }
+
+    .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
+    .online { background: #e3fcce; color: #2ecc71; }
+    .waiting { background: #ffeaa7; color: #d63031; }
+    .room-code-display { font-size: 36px; font-weight: bold; letter-spacing: 4px; color: #ff4757; margin: 10px 0; }
   </style>
 </head>
 <body>
@@ -85,7 +134,7 @@ video { transform: scaleX(-1); } /* กลับด้านกล้องต�
     </div>
 
     <br>
-    <button class="btn" style="background: #2ed573; font-size: 18px;" onclick="requestGoToStep2()">เมื่อส่งลิงก์ให้แฟนแล้ว กดถัดไป ➡️</button>
+    <button id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" onclick="requestGoToStep2()" disabled>🔒 รอแฟนเข้าห้องก่อนนะ (1/2 คน)</button>
   </div>
 
   <!-- STEP 2 -->
@@ -167,43 +216,363 @@ video { transform: scaleX(-1); } /* กลับด้านกล้องต�
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-   // ส่งภาพกล้องสด Real-Time ไปให้อีกฝ่าย (แก้ปัญหาสัดส่วนภาพยืดตั้งแต่ต้นทาง)
-function startLiveStreaming() {
-  if (streamInterval) clearInterval(streamInterval);
-  const tempCanvas = document.createElement('canvas');
-  const targetW = 320;
-  const targetH = 240;
-  tempCanvas.width = targetW;
-  tempCanvas.height = targetH;
-  const ctx = tempCanvas.getContext('2d');
+    const socket = io();
+    let currentRoomId = "";
+    let totalSlots = 3;
+    let selectedTheme = "theme-pastel";
+    let myPhotos = [];
+    let partnerPhotos = [];
+    let currentSlot = 0;
+    let streamInterval = null;
+    let userInRoomCount = 1;
 
-  streamInterval = setInterval(() => {
-    if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA) {
-      const vW = myVideo.videoWidth;
-      const vH = myVideo.videoHeight;
-      
-      // คำนวณสัดส่วน object-fit: cover ลงบน Canvas ก่อนส่ง
-      const aspect = vW / vH;
-      const targetAspect = targetW / targetH;
-      let sW, sH, sX, sY;
+    const myVideo = document.getElementById('myVideo');
+    const partnerImg = document.getElementById('partnerImg');
+    const snapBtn = document.getElementById('snapBtn');
+    const nextStepBtn = document.getElementById('nextStepBtn');
+    const countdownEl = document.getElementById('countdown');
 
-      if (aspect > targetAspect) {
-        sH = vH;
-        sW = vH * targetAspect;
-        sX = (vW - sW) / 2;
-        sY = 0;
+    window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      if (roomParam && roomParam.length === 4) {
+        joinRoom(roomParam);
+      }
+    };
+
+    function createRoom() {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      joinRoom(code);
+    }
+
+    function joinCustomRoom() {
+      const code = document.getElementById('roomInput').value.trim();
+      if (code.length === 4) {
+        joinRoom(code);
       } else {
-        sW = vW;
-        sH = vW / targetAspect;
-        sX = 0;
-        sY = (vH - sH) / 2;
+        alert("กรุณากรอกรหัสห้อง 4 หลักให้ถูกต้องครับ");
+      }
+    }
+
+    function joinRoom(id) {
+      currentRoomId = id;
+      document.getElementById('roomDisplay').innerText = currentRoomId;
+      socket.emit('join-room', currentRoomId);
+      
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { 
+          myVideo.srcObject = stream;
+          startLiveStreaming();
+        })
+        .catch(err => console.log("Camera error:", err));
+    }
+
+    // ส่งภาพกล้องสด Real-Time (คำนวณสัดส่วน cover บน canvas ก่อนส่ง ป้องกันภาพยืด)
+    function startLiveStreaming() {
+      if (streamInterval) clearInterval(streamInterval);
+      const tempCanvas = document.createElement('canvas');
+      const targetW = 320;
+      const targetH = 240;
+      tempCanvas.width = targetW;
+      tempCanvas.height = targetH;
+      const ctx = tempCanvas.getContext('2d');
+
+      streamInterval = setInterval(() => {
+        if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA) {
+          const vW = myVideo.videoWidth;
+          const vH = myVideo.videoHeight;
+          const aspect = vW / vH;
+          const targetAspect = targetW / targetH;
+          let sW, sH, sX, sY;
+
+          if (aspect > targetAspect) {
+            sH = vH; sW = vH * targetAspect; sX = (vW - sW) / 2; sY = 0;
+          } else {
+            sW = vW; sH = vW / targetAspect; sX = 0; sY = (vH - sH) / 2;
+          }
+
+          ctx.drawImage(myVideo, sX, sY, sW, sH, 0, 0, targetW, targetH);
+          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.5));
+        }
+      }, 120);
+    }
+
+    socket.on('receive-partner-stream', (frameData) => {
+      partnerImg.src = frameData;
+    });
+
+    function copyLink() {
+      const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
+      navigator.clipboard.writeText(fullUrl);
+      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าห้องเดียวกับคุณทันทีครับ`);
+    }
+
+    socket.on('room-status', (data) => {
+      const badge1 = document.getElementById('roomStatusBadge');
+      const badge2 = document.getElementById('step2StatusBadge');
+      userInRoomCount = data.userCount;
+      
+      const isReady = userInRoomCount >= 2;
+      const text = isReady ? `🟢 แฟนอยู่ในห้องแล้ว! (${userInRoomCount}/2 คน)` : `⏳ กำลังรอแฟน... (${userInRoomCount}/2 คน)`;
+      const className = isReady ? "status-badge online" : "status-badge waiting";
+
+      badge1.className = className; badge1.innerText = text;
+      badge2.className = className; badge2.innerText = text;
+
+      // ปลดล็อกปุ่มถัดไปเมื่ออยู่ครบ 2/2 คน
+      if (isReady) {
+        nextStepBtn.disabled = false;
+        nextStepBtn.innerText = "พร้อมแล้ว! กดถัดไป ➡️";
+      } else {
+        nextStepBtn.disabled = true;
+        nextStepBtn.innerText = `🔒 รอแฟนเข้าห้องก่อนนะ (${userInRoomCount}/2 คน)`;
       }
 
-      ctx.drawImage(myVideo, sX, sY, sW, sH, 0, 0, targetW, targetH);
-      socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.5));
+      if (data.config) {
+        totalSlots = data.config.slots;
+        selectedTheme = data.config.theme;
+        if (data.config.currentStep && data.config.currentStep !== 'step0') {
+          renderStep(data.config.currentStep);
+        }
+      }
+    });
+
+    function selectTheme(themeName) {
+      selectedTheme = themeName;
+      document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
+      document.querySelector(`.${themeName}`)?.classList.add('selected');
+      syncConfig();
     }
-  }, 120); // ปรับรอบส่งภาพให้ภาพลื่นขึ้น
-}
+
+    function syncConfig() {
+      const config = {
+        slots: parseInt(document.getElementById('slotSelect').value),
+        theme: selectedTheme
+      };
+      socket.emit('update-config', config);
+    }
+
+    socket.on('config-updated', (config) => {
+      totalSlots = config.slots;
+      selectedTheme = config.theme;
+    });
+
+    function requestGoToStep2() { 
+      if (userInRoomCount >= 2) {
+        socket.emit('change-step', 'step2');
+      } else {
+        alert("ต้องรอให้แฟนเข้าร่วมห้องให้ครบ 2 คนก่อนนะครับ");
+      }
+    }
+
+    socket.on('navigate-to-step', (stepId) => {
+      renderStep(stepId);
+    });
+
+    function triggerSnap() { socket.emit('start-countdown'); }
+
+    socket.on('trigger-countdown', () => {
+      snapBtn.disabled = true;
+      snapBtn.innerText = "⏳ กำลังถ่ายรูป...";
+      myPhotos = []; partnerPhotos = []; currentSlot = 0;
+      captureSequence();
+    });
+
+    function captureSequence() {
+      if (currentSlot < totalSlots) {
+        document.getElementById('slotProgress').innerText = `รูปที่ ${currentSlot + 1} / ${totalSlots}`;
+        let count = 3;
+        countdownEl.innerText = count;
+
+        const timer = setInterval(() => {
+          count--;
+          if (count > 0) {
+            countdownEl.innerText = count;
+          } else {
+            clearInterval(timer);
+            countdownEl.innerText = "CHEESE! 📸";
+            
+            myPhotos.push(captureFrame());
+            currentSlot++;
+            setTimeout(captureSequence, 1500);
+          }
+        }, 1000);
+      } else {
+        countdownEl.innerText = "เรียบร้อย! ✨";
+        socket.emit('send-photos', myPhotos);
+        checkAndComplete();
+      }
+    }
+
+    function captureFrame() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 340; canvas.height = 250;
+      const ctx = canvas.getContext('2d');
+      ctx.translate(340, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(myVideo, 0, 0, 340, 250);
+      return canvas.toDataURL('image/jpeg', 0.7);
+    }
+
+    socket.on('receive-partner-photos', (photos) => {
+      partnerPhotos = photos;
+      checkAndComplete();
+    });
+
+    function checkAndComplete() {
+      if (myPhotos.length === totalSlots && partnerPhotos.length === totalSlots) {
+        renderPhotostrip();
+        renderStep('step3');
+        makeElementSmoothDraggable(document.getElementById('frameText'), 'text');
+      }
+    }
+
+    function renderPhotostrip() {
+      const container = document.getElementById('frameCanvasContainer');
+      const grid = document.getElementById('photoGrid');
+      container.className = selectedTheme;
+      grid.innerHTML = "";
+
+      for (let i = 0; i < totalSlots; i++) {
+        const row = document.createElement('div');
+        row.className = "photo-row";
+
+        const imgMine = document.createElement('img');
+        imgMine.src = myPhotos[i];
+
+        const imgPartner = document.createElement('img');
+        imgPartner.src = partnerPhotos[i];
+
+        row.appendChild(imgMine);
+        row.appendChild(imgPartner);
+        grid.appendChild(row);
+      }
+    }
+
+    function sendSticker(emoji) {
+      const id = 'sticker_' + Math.random().toString(36).substr(2, 9);
+      socket.emit('add-sticker', { id, emoji, left: '40%', top: '40%' });
+    }
+
+    socket.on('sticker-added', (data) => {
+      const sticker = document.createElement('div');
+      sticker.id = data.id;
+      sticker.className = 'draggable-element draggable-sticker';
+      sticker.innerText = data.emoji;
+      sticker.style.left = data.left;
+      sticker.style.top = data.top;
+      document.getElementById('frameCanvasContainer').appendChild(sticker);
+      makeElementSmoothDraggable(sticker, 'sticker');
+    });
+
+    function sendTextChange(val) {
+      socket.emit('update-frame-text', val);
+    }
+    socket.on('frame-text-updated', (text) => {
+      document.getElementById('frameText').innerText = text || "Distance means so little ❤️";
+    });
+
+    function changeFont(fontClass) {
+      socket.emit('update-font-style', fontClass);
+    }
+    socket.on('font-style-updated', (fontClass) => {
+      const el = document.getElementById('frameText');
+      el.className = `draggable-element draggable-text ${fontClass}`;
+      document.getElementById('fontSelect').value = fontClass;
+    });
+
+    // ลากสติ๊กเกอร์ & ข้อความแบบเสถียร ไม่กระตุก
+    function makeElementSmoothDraggable(elmnt, type) {
+      let isDragging = false;
+      let startX, startY, initialLeft, initialTop;
+
+      elmnt.addEventListener('mousedown', startDrag);
+      elmnt.addEventListener('touchstart', startDrag, { passive: false });
+
+      function startDrag(e) {
+        isDragging = true;
+        const event = e.touches ? e.touches[0] : e;
+        startX = event.clientX;
+        startY = event.clientY;
+        initialLeft = elmnt.offsetLeft;
+        initialTop = elmnt.offsetTop;
+
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+      }
+
+      function drag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const event = e.touches ? e.touches[0] : e;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+
+        const newLeft = (initialLeft + dx) + 'px';
+        const newTop = (initialTop + dy) + 'px';
+
+        elmnt.style.left = newLeft;
+        elmnt.style.top = newTop;
+
+        if (type === 'sticker') {
+          socket.emit('update-sticker-pos', { id: elmnt.id, left: newLeft, top: newTop });
+        } else if (type === 'text') {
+          socket.emit('update-text-pos', { left: newLeft, top: newTop });
+        }
+      }
+
+      function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchend', stopDrag);
+      }
+    }
+
+    socket.on('sticker-moved', (data) => {
+      const el = document.getElementById(data.id);
+      if (el) {
+        el.style.left = data.left;
+        el.style.top = data.top;
+      }
+    });
+
+    socket.on('text-pos-moved', (pos) => {
+      const el = document.getElementById('frameText');
+      if (el) {
+        el.style.left = pos.left;
+        el.style.top = pos.top;
+      }
+    });
+
+    function exportImage(format) {
+      const element = document.getElementById('frameCanvasContainer');
+      html2canvas(element, { scale: 2 }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `LDR-Photobooth.${format}`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.click();
+      });
+    }
+
+    function exportPDF() {
+      const element = document.getElementById('frameCanvasContainer');
+      html2canvas(element, { scale: 2 }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        pdf.addImage(imgData, 'PNG', 15, 15, 180, 0);
+        pdf.save('LDR-Photobooth.pdf');
+      });
+    }
+
+    function renderStep(stepId) {
+      document.querySelectorAll('.step-section').forEach(el => el.classList.remove('active'));
+      document.getElementById(stepId).classList.add('active');
+    }
   </script>
 </body>
 </html>
