@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LDR Photobooth</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <style>
@@ -152,7 +151,7 @@
     </div>
 
     <br>
-    <button type="button" class="btn" style="background: #2ed573;" onclick="exportImage('jpg')">🖼️ ดาวน์โหลด JPG</button>
+    <button type="button" class="btn" style="background: #2ed573;" onclick="exportImageJPG()">🖼️ ดาวน์โหลด JPG</button>
     <button type="button" class="btn" style="background: #ff4757;" onclick="exportPDF()">📄 ดาวน์โหลด PDF</button>
     <button type="button" class="btn" style="background: #ffa502;" onclick="retakePhotos()">🔄 ถ่ายใหม่อีกครั้ง</button>
   </div>
@@ -248,7 +247,6 @@
       tempCanvas.height = 240;
       const ctx = tempCanvas.getContext('2d');
 
-      // ปรับความถี่ส่งเฟรมเป็น 200ms เพื่อป้องกันการดีเลย์ของฝั่งเน็ตช้า
       streamInterval = setInterval(() => {
         if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
           isSendingFrame = true;
@@ -374,7 +372,6 @@
       } else {
         countdownEl.innerText = "เรียบร้อย! ✨";
         socket.emit('send-photos', myPhotos);
-        // ถ่ายเสร็จสั่งย้ายหน้าทันทีทั้งคู่โดยไม่ค้าง
         setTimeout(() => {
           socket.emit('change-step', 'step3');
         }, 500);
@@ -383,16 +380,15 @@
 
     function captureFrame() {
       const canvas = document.createElement('canvas');
-      canvas.width = 960; 
-      canvas.height = 720;
+      canvas.width = 640; 
+      canvas.height = 480;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(myVideo, 0, 0, 960, 720);
-      return canvas.toDataURL('image/jpeg', 0.8);
+      ctx.drawImage(myVideo, 0, 0, 640, 480);
+      return canvas.toDataURL('image/jpeg', 0.85);
     }
 
     socket.on('receive-partner-photos', (photos) => {
       partnerPhotos = photos;
-      // อัปเดตรูปถ่ายของฝั่งแฟนเมื่อรับข้อมูลเสร็จ
       renderPhotostrip();
     });
 
@@ -486,24 +482,98 @@
       }
     });
 
-    function exportImage(format) {
-      const element = document.getElementById('frameCanvasContainer');
-      html2canvas(element).then(canvas => {
+    // ฟังก์ชันสร้างภาพแบบ Direct Canvas เพื่อตัดปัญหาดาวน์โหลดไม่ได้ 100%
+    function buildRenderCanvas(callback) {
+      const themeBgColors = {
+        'theme-pastel': '#ffeaa7',
+        'theme-pink': '#ff758c',
+        'theme-vintage': '#d7ccc8',
+        'theme-dark': '#2d3436'
+      };
+      const themeTextColors = {
+        'theme-pastel': '#d63031',
+        'theme-pink': '#ffffff',
+        'theme-vintage': '#4e342e',
+        'theme-dark': '#dfe6e9'
+      };
+
+      const canvas = document.createElement('canvas');
+      const width = 400;
+      const height = 140 + (totalSlots * 135);
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      // 1. Draw Background
+      ctx.fillStyle = themeBgColors[selectedTheme] || '#ffeaa7';
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Draw Photos
+      let loaded = 0;
+      const totalImgs = totalSlots * 2;
+      if (totalImgs === 0) return callback(canvas);
+
+      for (let i = 0; i < totalSlots; i++) {
+        const y = 30 + (i * 135);
+
+        // Photo 1 (Mine)
+        const img1 = new Image();
+        img1.onload = () => {
+          ctx.drawImage(img1, 30, y, 160, 120);
+          loaded++;
+          if (loaded === totalImgs) drawTextAndStickers();
+        };
+        img1.src = myPhotos[i] || '';
+
+        // Photo 2 (Partner)
+        const img2 = new Image();
+        img2.onload = () => {
+          ctx.drawImage(img2, 210, y, 160, 120);
+          loaded++;
+          if (loaded === totalImgs) drawTextAndStickers();
+        };
+        img2.src = partnerPhotos[i] || '';
+      }
+
+      function drawTextAndStickers() {
+        // Draw Text
+        const text = document.getElementById('frameText').innerText;
+        ctx.fillStyle = themeTextColors[selectedTheme] || '#333';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(text, width / 2, height - 30);
+
+        // Draw Stickers
+        document.querySelectorAll('.draggable-sticker').forEach(st => {
+          const rect = st.getBoundingClientRect();
+          const parentRect = document.getElementById('frameCanvasContainer').getBoundingClientRect();
+          const relX = rect.left - parentRect.left;
+          const relY = rect.top - parentRect.top;
+          
+          ctx.font = '35px sans-serif';
+          ctx.fillText(st.innerText, relX + 17, relY + 30);
+        });
+
+        callback(canvas);
+      }
+    }
+
+    function exportImageJPG() {
+      buildRenderCanvas((canvas) => {
         const link = document.createElement('a');
-        link.download = `LDR-Photobooth.${format}`;
-        link.href = canvas.toDataURL('image/jpeg');
+        link.download = `LDR-Photobooth-${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
         link.click();
       });
     }
 
     function exportPDF() {
-      const element = document.getElementById('frameCanvasContainer');
-      html2canvas(element).then(canvas => {
+      buildRenderCanvas((canvas) => {
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.addImage(imgData, 'PNG', 15, 15, 180, 0);
-        pdf.save('LDR-Photobooth.pdf');
+        pdf.addImage(imgData, 'PNG', 20, 10, 170, 0);
+        pdf.save(`LDR-Photobooth-${Date.now()}.pdf`);
       });
     }
 
