@@ -3,53 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LDR Photobooth</title>
+  <title>LDR Photobooth Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <style>
-    * { box-sizing: border-box; font-family: sans-serif; }
-    body { background: #f7f8fa; margin: 0; padding: 20px; text-align: center; color: #333; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #1a1a24; color: #fff; margin: 0; padding: 20px; text-align: center; }
     
-    .step-section { display: none; background: white; max-width: 800px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .step-section { display: none; background: #252538; max-width: 900px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .step-section.active { display: block; }
 
-    .theme-pastel { background: #ffeaa7; color: #d63031; border: 4px solid #fdcb6e; }
-    .theme-pink { background: #ff758c; color: #ffffff; border: 4px solid #ff758c; }
-    .theme-vintage { background: #d7ccc8; color: #4e342e; border: 4px solid #8d6e63; }
-    .theme-dark { background: #2d3436; color: #dfe6e9; border: 4px solid #636e72; }
+    /* Theme Styles based on reference images */
+    .theme-midnight { 
+      background: linear-gradient(180deg, #020024 0%, #090979 35%, #00d4ff 100%);
+      color: #ffffff;
+      border: 8px solid #ffffff;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    }
+    .theme-cupid { 
+      background: radial-gradient(circle, #ffe6eb 0%, #ffb6c1 100%);
+      color: #d63031;
+      border: 8px solid #ffffff;
+      box-shadow: 0 0 20px rgba(255, 182, 193, 0.8);
+    }
+    .theme-vintage { background: #d7ccc8; color: #4e342e; border: 8px solid #8d6e63; }
+    .theme-dark { background: #1e1e1e; color: #ffffff; border: 8px solid #333333; }
 
     .theme-options { display: flex; justify-content: center; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
-    .theme-card { padding: 15px 20px; border-radius: 12px; cursor: pointer; border: 3px solid transparent; font-weight: bold; transition: 0.2s; }
-    .theme-card.selected { border-color: #ff4757; transform: scale(1.05); }
+    .theme-card { padding: 12px 20px; border-radius: 12px; cursor: pointer; border: 3px solid transparent; font-weight: bold; background: #34344e; color: #fff; transition: 0.2s; }
+    .theme-card.selected { border-color: #ff4757; transform: scale(1.05); background: #444466; }
+
+    /* Layout Selector Grid */
+    .layout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin: 15px 0; max-height: 400px; overflow-y: auto; padding: 10px; background: #1a1a24; border-radius: 12px; }
+    .layout-card { border: 2px solid #444; border-radius: 8px; padding: 10px; cursor: pointer; background: #2a2a3d; transition: 0.2s; display: flex; flex-direction: column; align-items: center; }
+    .layout-card:hover, .layout-card.selected { border-color: #2ed573; background: #3b3b5c; transform: translateY(-3px); }
+    .layout-icon { width: 60px; height: 80px; border: 1px solid #aaa; background: #111; display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; justify-content: center; align-content: center; margin-bottom: 5px; }
+    .layout-box { background: #fff; border-radius: 1px; }
 
     .btn { padding: 12px 28px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.3s; margin: 5px; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
-    .btn:disabled { background: #ccc !important; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .btn:disabled { background: #555 !important; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
     
-    input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #ddd; margin: 10px; text-align: center; }
+    input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #444; background: #1a1a24; color: #fff; margin: 10px; text-align: center; }
 
     .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
-    video, .partner-preview { 
-      width: 320px; 
-      height: 240px; 
-      background: #222; 
-      border-radius: 15px; 
-      object-fit: cover; 
-    }
+    video, .partner-preview { width: 320px; height: 240px; background: #000; border-radius: 15px; object-fit: cover; border: 2px solid #555; }
     video { transform: scaleX(-1); }
 
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
 
-    #frameCanvasContainer { display: inline-block; padding: 20px 20px 40px 20px; border-radius: 15px; position: relative; margin: 20px 0; min-width: 360px; }
-    .grid-layout { display: flex; flex-direction: column; gap: 12px; }
-    .photo-row { display: flex; gap: 12px; justify-content: center; }
-    .photo-row img { width: 160px; height: 120px; object-fit: cover; border-radius: 6px; }
+    #frameCanvasContainer { display: inline-block; padding: 25px; border-radius: 10px; position: relative; margin: 20px 0; min-width: 320px; }
+    .render-grid { display: grid; gap: 8px; justify-content: center; margin: 15px 0; }
+    .render-grid img { object-fit: cover; border: 3px solid #fff; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
 
     .sticker-palette { display: flex; justify-content: center; gap: 15px; font-size: 30px; margin: 15px 0; }
     .sticker-palette span { cursor: pointer; transition: 0.2s; user-select: none; }
     .sticker-palette span:hover { transform: scale(1.3); }
 
-    .draggable-sticker { position: absolute; font-size: 35px; cursor: move; user-select: none; touch-action: none; }
+    .draggable-sticker { position: absolute; font-size: 35px; cursor: move; user-select: none; touch-action: none; z-index: 10; }
     .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
     .online { background: #e3fcce; color: #2ecc71; }
     .waiting { background: #ffeaa7; color: #d63031; }
@@ -58,16 +69,16 @@
 </head>
 <body>
 
-  <h1>📷 LDR Photobooth</h1>
+  <h1>✨ LDR Photobooth Studio</h1>
 
   <!-- STEP 0 -->
   <div id="step0" class="step-section active">
-    <h2>เข้าใช้งานตู้ถ่ายรูปคู่</h2>
-    <p>กดสร้างห้องใหม่ หรือกรอกเลขห้อง 4 หลักจากแฟน</p>
+    <h2>เข้าใช้งานตู้ถ่ายรูปคู่ online</h2>
+    <p>สร้างห้องใหม่ หรือใส่รหัสห้องเพื่อถ่ายรูปคู่กับแฟน</p>
     <div>
       <button type="button" class="btn" onclick="createRoom()">✨ สร้างห้องถ่ายรูปใหม่</button>
     </div>
-    <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #444;">
     <div>
       <input type="text" id="roomInput" placeholder="กรอกรหัสห้อง (เช่น 1234)" maxlength="4">
       <button type="button" class="btn" style="background: #2ed573;" onclick="joinCustomRoom()">เข้าร่วมห้อง</button>
@@ -76,39 +87,31 @@
 
   <!-- STEP 1 -->
   <div id="step1" class="step-section">
-    <h2>1. ตั้งค่าและส่งลิงก์ให้แฟน</h2>
+    <h2>1. เลือกรูปแบบ Layout & ธีมกรอบรูป</h2>
     <div id="roomStatusBadge" class="status-badge waiting">⏳ กำลังรอแฟนเข้าห้อง... (1/2 คน)</div>
     
-    <p style="margin-bottom: 0;"><b>รหัสห้องของคุณ:</b></p>
-    <div id="roomDisplay" class="room-code-display">----</div>
-    <button type="button" class="btn" style="background: #70a1ff; padding: 8px 20px; font-size: 15px;" onclick="copyLink()">🔗 คัดลอกลิงก์ส่งให้แฟน</button>
-    
-    <div style="margin-top: 20px;">
-      <label><b>เลือกจำนวนช่อง:</b></label>
-      <select id="slotSelect" onchange="syncConfig()">
-        <option value="3">3 ช่อง (ถ่ายคนละ 3 รูป)</option>
-        <option value="4">4 ช่อง (ถ่ายคนละ 4 รูป)</option>
-        <option value="6">6 ช่อง (ถ่ายคนละ 6 รูป)</option>
-      </select>
+    <div><b>รหัสห้องของคุณ:</b> <span id="roomDisplay" class="room-code-display">----</span></div>
+    <button type="button" class="btn" style="background: #70a1ff; padding: 6px 16px; font-size: 14px;" onclick="copyLink()">🔗 คัดลอกลิงก์ส่งให้แฟน</button>
+
+    <h3 style="margin-top:20px; text-align:left;">📐 เลือกรูปแบบเลย์เอาต์ (Layout Catalogue):</h3>
+    <div class="layout-grid" id="layoutGrid">
+      <!-- Generated Layout Options -->
     </div>
 
-    <div>
-      <label><b>เลือก Theme กรอบรูป:</b></label>
-      <div class="theme-options">
-        <div class="theme-card theme-pastel selected" onclick="selectTheme('theme-pastel')">Pastel Yellow 💛</div>
-        <div class="theme-card theme-pink" onclick="selectTheme('theme-pink')">Sweet Pink 💗</div>
-        <div class="theme-card theme-vintage" onclick="selectTheme('theme-vintage')">Vintage Brown 🤎</div>
-        <div class="theme-card theme-dark" onclick="selectTheme('theme-dark')">Minimal Dark 🖤</div>
-      </div>
+    <h3 style="text-align:left;">🎨 เลือกสไตล์ธีมกรอบรูป:</h3>
+    <div class="theme-options">
+      <div class="theme-card theme-midnight selected" onclick="selectTheme('theme-midnight')">🌌 Midnight Anniversary</div>
+      <div class="theme-card theme-cupid" onclick="selectTheme('theme-cupid')">💘 Cupid Pink Heart</div>
+      <div class="theme-card theme-vintage" onclick="selectTheme('theme-vintage')">🤎 Vintage Classic</div>
+      <div class="theme-card theme-dark" onclick="selectTheme('theme-dark')">🖤 Minimal Dark</div>
     </div>
 
-    <br>
-    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px;" onclick="goToStep2()" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
+    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px; margin-top:20px;" onclick="goToStep2()" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
   </div>
 
   <!-- STEP 2 -->
   <div id="step2" class="step-section">
-    <h2>2. เตรียมตัวถ่ายรูป</h2>
+    <h2>2. เตรียมตัวถ่ายรูปคู่</h2>
     <div id="step2StatusBadge" class="status-badge waiting">⏳ กำลังรอแฟน... (1/2 คน)</div>
 
     <div class="camera-container">
@@ -131,7 +134,7 @@
   <!-- STEP 3 -->
   <div id="step3" class="step-section">
     <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
-    <p>คลิกเลือกสติ๊กเกอร์ หรือพิมพ์ข้อความ ซึ่งจะขึ้นสดๆ บนหน้าจอทั้ง 2 ฝ่าย!</p>
+    <p>ใส่สติ๊กเกอร์และข้อความน่ารักๆ ตกแต่งการ์ดร่วมกันได้เลย!</p>
 
     <div class="sticker-palette">
       <span onclick="sendSticker('❤️')">❤️</span>
@@ -139,15 +142,19 @@
       <span onclick="sendSticker('🌸')">🌸</span>
       <span onclick="sendSticker('🐻')">🐻</span>
       <span onclick="sendSticker('🎀')">🎀</span>
+      <span onclick="sendSticker('👑')">👑</span>
     </div>
 
     <div>
-      <input type="text" id="textInput" placeholder="พิมพ์ข้อความท้ายกรอบรูป..." oninput="sendTextChange(this.value)" style="width: 250px;">
+      <input type="text" id="textInput" placeholder="Happy Anniversary..." oninput="sendTextChange(this.value)" style="width: 280px;">
     </div>
 
-    <div id="frameCanvasContainer" class="theme-pastel">
-      <div id="photoGrid" class="grid-layout"></div>
-      <h3 style="margin-top: 15px; margin-bottom: 0;" id="frameText">Distance means so little ❤️</h3>
+    <!-- Container Rendering Photostrip -->
+    <div id="frameCanvasContainer" class="theme-midnight">
+      <div id="frameHeader" style="font-family:'Georgia', serif; font-size:22px; font-weight:bold; margin-bottom:10px;">HAPPY Anniversary</div>
+      <div id="photoGrid" class="render-grid"></div>
+      <div id="frameText" style="font-size:18px; font-weight:bold; margin-top:10px;">Maria & Philipe</div>
+      <div id="frameSubText" style="font-size:12px; opacity:0.8;">25-10-2026</div>
     </div>
 
     <br>
@@ -160,150 +167,120 @@
   <script>
     const socket = io();
     let currentRoomId = "";
-    let totalSlots = 3;
-    let selectedTheme = "theme-pastel";
+    let selectedLayout = 1; // Default: 2x6 3 Shots
+    let selectedTheme = "theme-midnight";
     let myPhotos = [];
     let partnerPhotos = [];
     let currentSlot = 0;
     let streamInterval = null;
     let isSendingFrame = false;
 
+    // 11 Layout Configurations from catalogue
+    const layoutConfigs = {
+      1: { name: "1. 2x6 (3 Shots)", slots: 3, cols: 1, w: 220, h: 140 },
+      2: { name: "2. 2x6 (4 Shots)", slots: 4, cols: 1, w: 220, h: 110 },
+      3: { name: "3. 4x6 Double Strip", slots: 6, cols: 2, w: 140, h: 105 },
+      4: { name: "4. 4x6 Single Shot", slots: 1, cols: 1, w: 300, h: 225 },
+      5: { name: "5. 4x6 Landscape", slots: 1, cols: 1, w: 320, h: 200 },
+      6: { name: "6. 4x6 Mirror 3 shot", slots: 3, cols: 3, w: 100, h: 140 },
+      7: { name: "7. 4x6 Photo Print A", slots: 3, cols: 2, w: 140, h: 100 },
+      8: { name: "8. 4x6 Photo Print B", slots: 3, cols: 2, w: 140, h: 100 },
+      9: { name: "9. 4x6 Gallery Print", slots: 4, cols: 3, w: 95, h: 80 },
+      10: { name: "10. 4x6 3 Shots Mirror", slots: 3, cols: 2, w: 130, h: 110 },
+      11: { name: "11. 4x6 4 Shots Mirror", slots: 4, cols: 2, w: 130, h: 100 }
+    };
+
     const myVideo = document.getElementById('myVideo');
     const partnerImg = document.getElementById('partnerImg');
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
+    // Build Catalogue Grid
+    const layoutGridEl = document.getElementById('layoutGrid');
+    Object.keys(layoutConfigs).forEach(id => {
+      const cfg = layoutConfigs[id];
+      const card = document.createElement('div');
+      card.className = `layout-card ${id == 1 ? 'selected' : ''}`;
+      card.onclick = () => selectLayout(parseInt(id));
+      card.id = `layout-card-${id}`;
+      card.innerHTML = `
+        <div class="layout-icon">
+          ${'<div class="layout-box" style="width:100%;height:15px;"></div>'.repeat(Math.min(cfg.slots, 4))}
+        </div>
+        <div style="font-size:12px; font-weight:bold;">${cfg.name}</div>
+      `;
+      layoutGridEl.appendChild(card);
+    });
+
     function checkUrlRoom() {
       const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('room');
-      if (roomParam && roomParam.length === 4) {
-        joinRoom(roomParam.trim());
-      }
+      if (roomParam && roomParam.length === 4) joinRoom(roomParam.trim());
     }
 
     socket.on('connect', () => {
-      if (currentRoomId) {
-        socket.emit('join-room', currentRoomId);
-      }
+      if (currentRoomId) socket.emit('join-room', currentRoomId);
     });
 
-    window.addEventListener('DOMContentLoaded', () => {
-      checkUrlRoom();
-    });
+    window.addEventListener('DOMContentLoaded', checkUrlRoom);
 
     function createRoom() {
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
-      joinRoom(code);
+      joinRoom(Math.floor(1000 + Math.random() * 9000).toString());
     }
 
     function joinCustomRoom() {
       const code = document.getElementById('roomInput').value.trim();
-      if (code.length === 4) {
-        joinRoom(code);
-      } else {
-        alert("กรุณากรอกรหัสห้อง 4 หลักให้ถูกต้องครับ");
-      }
+      if (code.length === 4) joinRoom(code);
+      else alert("กรุณากรอกรหัสห้อง 4 หลักให้ถูกต้องครับ");
     }
 
     function joinRoom(id) {
-      if (!id) return;
       currentRoomId = id;
       document.getElementById('roomDisplay').innerText = currentRoomId;
       renderStep('step1');
-
       socket.emit('join-room', currentRoomId);
       initCamera();
     }
 
     function initCamera() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: "user",
-            width: { ideal: 480 }, 
-            height: { ideal: 360 } 
-          } 
-        })
-        .then(stream => { 
-          myVideo.srcObject = stream;
-          startLiveStreaming();
-        })
-        .catch(err => {
-          console.log("Camera error:", err);
-          navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-              myVideo.srcObject = stream;
-              startLiveStreaming();
-            });
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 360 } } })
+        .then(stream => { myVideo.srcObject = stream; startLiveStreaming(); })
+        .catch(() => {
+          navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { myVideo.srcObject = stream; startLiveStreaming(); });
         });
       }
     }
 
     function startLiveStreaming() {
       if (streamInterval) clearInterval(streamInterval);
-      
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 320;
-      tempCanvas.height = 240;
+      tempCanvas.width = 320; tempCanvas.height = 240;
       const ctx = tempCanvas.getContext('2d');
 
       streamInterval = setInterval(() => {
         if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
           isSendingFrame = true;
           ctx.drawImage(myVideo, 0, 0, 320, 240);
-          const frameData = tempCanvas.toDataURL('image/jpeg', 0.5);
-          socket.emit('stream-frame', frameData);
+          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.5));
           setTimeout(() => { isSendingFrame = false; }, 200);
         }
       }, 200);
     }
 
-    socket.on('receive-partner-stream', (frameData) => {
-      partnerImg.src = frameData;
-    });
+    socket.on('receive-partner-stream', (frameData) => { partnerImg.src = frameData; });
 
     function copyLink() {
-      const fullUrl = `${window.location.origin}/?room=${currentRoomId}`;
-      navigator.clipboard.writeText(fullUrl);
-      alert(`คัดลอกลิงก์เรียบร้อยแล้ว!\nส่งลิงก์นี้ให้แฟน แฟนเปิดปุ๊บจะเข้าห้องถ่ายรูปกับคุณทันทีครับ`);
+      navigator.clipboard.writeText(`${window.location.origin}/?room=${currentRoomId}`);
+      alert("คัดลอกลิงก์เรียบร้อยแล้ว! ส่งให้แฟนกดเข้าห้องได้เลยครับ");
     }
 
-    function goToStep2() {
-      socket.emit('change-step', 'step2');
+    function selectLayout(id) {
+      selectedLayout = id;
+      document.querySelectorAll('.layout-card').forEach(el => el.classList.remove('selected'));
+      document.getElementById(`layout-card-${id}`)?.classList.add('selected');
+      syncConfig();
     }
-
-    function retakePhotos() {
-      snapBtn.disabled = false;
-      snapBtn.innerText = "📸 กดถ่ายรูป (ใครกดก็ได้)";
-      countdownEl.innerText = "";
-      document.getElementById('slotProgress').innerText = "";
-      socket.emit('change-step', 'step2');
-    }
-
-    socket.on('room-status', (data) => {
-      const badge1 = document.getElementById('roomStatusBadge');
-      const badge2 = document.getElementById('step2StatusBadge');
-      const nextBtn = document.getElementById('nextStepBtn');
-      const count = data.userCount;
-      
-      const isReady = count >= 2;
-      const text = isReady ? `🟢 แฟนอยู่ในห้องแล้ว! (${count}/2 คน)` : `⏳ กำลังรอแฟน... (${count}/2 คน)`;
-      const className = isReady ? "status-badge online" : "status-badge waiting";
-
-      if (badge1) { badge1.className = className; badge1.innerText = text; }
-      if (badge2) { badge2.className = className; badge2.innerText = text; }
-
-      if (nextBtn) {
-        nextBtn.disabled = !isReady;
-        nextBtn.innerText = isReady ? "พร้อมถ่ายรูปแล้ว! ➡️" : "⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป";
-      }
-
-      if (data.config) {
-        totalSlots = data.config.slots;
-        selectedTheme = data.config.theme;
-        document.getElementById('slotSelect').value = totalSlots;
-      }
-    });
 
     function selectTheme(themeName) {
       selectedTheme = themeName;
@@ -313,27 +290,42 @@
     }
 
     function syncConfig() {
-      const config = {
-        slots: parseInt(document.getElementById('slotSelect').value),
-        theme: selectedTheme
-      };
-      socket.emit('update-config', config);
+      socket.emit('update-config', { layout: selectedLayout, theme: selectedTheme });
     }
 
     socket.on('config-updated', (config) => {
-      totalSlots = config.slots;
+      selectedLayout = config.layout;
       selectedTheme = config.theme;
-      document.getElementById('slotSelect').value = totalSlots;
+      document.querySelectorAll('.layout-card').forEach(el => el.classList.remove('selected'));
+      document.getElementById(`layout-card-${config.layout}`)?.classList.add('selected');
       document.querySelectorAll('.theme-card').forEach(el => el.classList.remove('selected'));
       document.querySelector(`.${config.theme}`)?.classList.add('selected');
     });
 
+    socket.on('room-status', (data) => {
+      const isReady = data.userCount >= 2;
+      const text = isReady ? `🟢 แฟนอยู่ในห้องแล้ว! (${data.userCount}/2 คน)` : `⏳ กำลังรอแฟน... (${data.userCount}/2 คน)`;
+      const className = isReady ? "status-badge online" : "status-badge waiting";
+
+      ['roomStatusBadge', 'step2StatusBadge'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.className = className; el.innerText = text; }
+      });
+
+      const nextBtn = document.getElementById('nextStepBtn');
+      if (nextBtn) {
+        nextBtn.disabled = !isReady;
+        nextBtn.innerText = isReady ? "พร้อมถ่ายรูปแล้ว! ➡️" : "⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป";
+      }
+    });
+
+    function goToStep2() { socket.emit('change-step', 'step2'); }
+    function retakePhotos() { socket.emit('change-step', 'step2'); }
+
     socket.on('navigate-to-step', (stepId) => {
       renderStep(stepId);
-      if(stepId === 'step3') {
-        renderPhotostrip();
-      }
-      if(stepId === 'step2') {
+      if (stepId === 'step3') renderPhotostrip();
+      if (stepId === 'step2') {
         snapBtn.disabled = false;
         snapBtn.innerText = "📸 กดถ่ายรูป (ใครกดก็ได้)";
         countdownEl.innerText = "";
@@ -345,12 +337,12 @@
 
     socket.on('trigger-countdown', () => {
       snapBtn.disabled = true;
-      snapBtn.innerText = "⏳ กำลังถ่ายรูป...";
       myPhotos = []; partnerPhotos = []; currentSlot = 0;
       captureSequence();
     });
 
     function captureSequence() {
+      const totalSlots = layoutConfigs[selectedLayout].slots;
       if (currentSlot < totalSlots) {
         document.getElementById('slotProgress').innerText = `รูปที่ ${currentSlot + 1} / ${totalSlots}`;
         let count = 3;
@@ -358,32 +350,26 @@
 
         const timer = setInterval(() => {
           count--;
-          if (count > 0) {
-            countdownEl.innerText = count;
-          } else {
+          if (count > 0) countdownEl.innerText = count;
+          else {
             clearInterval(timer);
             countdownEl.innerText = "CHEESE! 📸";
-            
             myPhotos.push(captureFrame());
             currentSlot++;
-            setTimeout(captureSequence, 1200);
+            setTimeout(captureSequence, 1000);
           }
         }, 1000);
       } else {
         countdownEl.innerText = "เรียบร้อย! ✨";
         socket.emit('send-photos', myPhotos);
-        setTimeout(() => {
-          socket.emit('change-step', 'step3');
-        }, 500);
+        setTimeout(() => socket.emit('change-step', 'step3'), 500);
       }
     }
 
     function captureFrame() {
       const canvas = document.createElement('canvas');
-      canvas.width = 640; 
-      canvas.height = 480;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(myVideo, 0, 0, 640, 480);
+      canvas.width = 640; canvas.height = 480;
+      canvas.getContext('2d').drawImage(myVideo, 0, 0, 640, 480);
       return canvas.toDataURL('image/jpeg', 0.85);
     }
 
@@ -395,80 +381,69 @@
     function renderPhotostrip() {
       const container = document.getElementById('frameCanvasContainer');
       const grid = document.getElementById('photoGrid');
-      container.className = selectedTheme;
-      grid.innerHTML = "";
+      const config = layoutConfigs[selectedLayout];
 
+      container.className = selectedTheme;
+      grid.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
+      grid.innerHTML = "";
       document.querySelectorAll('.draggable-sticker').forEach(st => st.remove());
 
-      for (let i = 0; i < totalSlots; i++) {
-        const row = document.createElement('div');
-        row.className = "photo-row";
+      const allPhotos = [];
+      for(let i = 0; i < config.slots; i++) {
+        if(myPhotos[i]) allPhotos.push(myPhotos[i]);
+        if(partnerPhotos[i]) allPhotos.push(partnerPhotos[i]);
+      }
 
-        const imgMine = document.createElement('img');
-        imgMine.src = myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23aaa">Loading...</text></svg>';
-
-        const imgPartner = document.createElement('img');
-        imgPartner.src = partnerPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23aaa">Loading...</text></svg>';
-
-        row.appendChild(imgMine);
-        row.appendChild(imgPartner);
-        grid.appendChild(row);
+      const totalRender = Math.max(config.slots, allPhotos.length);
+      for (let i = 0; i < totalRender; i++) {
+        const img = document.createElement('img');
+        img.style.width = `${config.w}px`;
+        img.style.height = `${config.h}px`;
+        img.src = allPhotos[i] || myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23333"/></svg>';
+        grid.appendChild(img);
       }
     }
 
     function sendSticker(emoji) {
-      const id = 'sticker_' + Math.random().toString(36).substr(2, 9);
-      socket.emit('add-sticker', { id, emoji, left: '45%', top: '40%' });
+      socket.emit('add-sticker', { id: 'sticker_' + Math.random().toString(36).substr(2, 9), emoji, left: '45%', top: '40%' });
     }
 
     socket.on('sticker-added', (data) => {
       const sticker = document.createElement('div');
-      sticker.id = data.id;
-      sticker.className = 'draggable-sticker';
-      sticker.innerText = data.emoji;
-      sticker.style.left = data.left;
-      sticker.style.top = data.top;
+      sticker.id = data.id; sticker.className = 'draggable-sticker';
+      sticker.innerText = data.emoji; sticker.style.left = data.left; sticker.style.top = data.top;
       makeDraggable(sticker);
       document.getElementById('frameCanvasContainer').appendChild(sticker);
     });
 
-    function sendTextChange(val) {
-      socket.emit('update-frame-text', val);
-    }
+    function sendTextChange(val) { socket.emit('update-frame-text', val); }
 
     socket.on('frame-text-updated', (text) => {
-      document.getElementById('frameText').innerText = text || "Distance means so little ❤️";
+      document.getElementById('frameText').innerText = text || "HAPPY Anniversary";
     });
 
     function makeDraggable(elmnt) {
-      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-      elmnt.onmousedown = dragMouseDown;
-      elmnt.ontouchstart = dragMouseDown;
+      let p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+      elmnt.onmousedown = dragStart; elmnt.ontouchstart = dragStart;
 
-      function dragMouseDown(e) {
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        pos3 = clientX; pos4 = clientY;
-        document.onmouseup = closeDragElement;
-        document.ontouchend = closeDragElement;
-        document.onmousemove = elementDrag;
-        document.ontouchmove = elementDrag;
+      function dragStart(e) {
+        p3 = e.clientX || e.touches[0].clientX;
+        p4 = e.clientY || e.touches[0].clientY;
+        document.onmouseup = dragEnd; document.ontouchend = dragEnd;
+        document.onmousemove = dragMove; document.ontouchmove = dragMove;
       }
 
-      function elementDrag(e) {
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        pos1 = pos3 - clientX; pos2 = pos4 - clientY;
-        pos3 = clientX; pos4 = clientY;
-        const newTop = (elmnt.offsetTop - pos2) + "px";
-        const newLeft = (elmnt.offsetLeft - pos1) + "px";
-        elmnt.style.top = newTop;
-        elmnt.style.left = newLeft;
-        
+      function dragMove(e) {
+        const cx = e.clientX || e.touches[0].clientX;
+        const cy = e.clientY || e.touches[0].clientY;
+        p1 = p3 - cx; p2 = p4 - cy; p3 = cx; p4 = cy;
+        const newTop = (elmnt.offsetTop - p2) + "px";
+        const newLeft = (elmnt.offsetLeft - p1) + "px";
+        elmnt.style.top = newTop; elmnt.style.left = newLeft;
         socket.emit('update-sticker-pos', { id: elmnt.id, left: newLeft, top: newTop });
       }
 
-      function closeDragElement() {
+      function dragEnd() {
         document.onmouseup = null; document.ontouchend = null;
         document.onmousemove = null; document.ontouchmove = null;
       }
@@ -476,82 +451,74 @@
 
     socket.on('sticker-moved', (data) => {
       const el = document.getElementById(data.id);
-      if (el) {
-        el.style.left = data.left;
-        el.style.top = data.top;
-      }
+      if (el) { el.style.left = data.left; el.style.top = data.top; }
     });
 
-    // ฟังก์ชันสร้างภาพแบบ Direct Canvas เพื่อตัดปัญหาดาวน์โหลดไม่ได้ 100%
+    // High-Resolution Direct Canvas Downloader
     function buildRenderCanvas(callback) {
-      const themeBgColors = {
-        'theme-pastel': '#ffeaa7',
-        'theme-pink': '#ff758c',
-        'theme-vintage': '#d7ccc8',
-        'theme-dark': '#2d3436'
-      };
-      const themeTextColors = {
-        'theme-pastel': '#d63031',
-        'theme-pink': '#ffffff',
-        'theme-vintage': '#4e342e',
-        'theme-dark': '#dfe6e9'
-      };
-
+      const container = document.getElementById('frameCanvasContainer');
       const canvas = document.createElement('canvas');
-      const width = 400;
-      const height = 140 + (totalSlots * 135);
-      canvas.width = width;
-      canvas.height = height;
+      const rect = container.getBoundingClientRect();
+      
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
       const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
 
-      // 1. Draw Background
-      ctx.fillStyle = themeBgColors[selectedTheme] || '#ffeaa7';
-      ctx.fillRect(0, 0, width, height);
-
-      // 2. Draw Photos
-      let loaded = 0;
-      const totalImgs = totalSlots * 2;
-      if (totalImgs === 0) return callback(canvas);
-
-      for (let i = 0; i < totalSlots; i++) {
-        const y = 30 + (i * 135);
-
-        // Photo 1 (Mine)
-        const img1 = new Image();
-        img1.onload = () => {
-          ctx.drawImage(img1, 30, y, 160, 120);
-          loaded++;
-          if (loaded === totalImgs) drawTextAndStickers();
-        };
-        img1.src = myPhotos[i] || '';
-
-        // Photo 2 (Partner)
-        const img2 = new Image();
-        img2.onload = () => {
-          ctx.drawImage(img2, 210, y, 160, 120);
-          loaded++;
-          if (loaded === totalImgs) drawTextAndStickers();
-        };
-        img2.src = partnerPhotos[i] || '';
+      // Background Style
+      if (selectedTheme === 'theme-midnight') {
+        const grad = ctx.createLinearGradient(0, 0, 0, rect.height);
+        grad.addColorStop(0, '#020024'); grad.addColorStop(0.5, '#090979'); grad.addColorStop(1, '#00d4ff');
+        ctx.fillStyle = grad;
+      } else if (selectedTheme === 'theme-cupid') {
+        ctx.fillStyle = '#ffb6c1';
+      } else if (selectedTheme === 'theme-vintage') {
+        ctx.fillStyle = '#d7ccc8';
+      } else {
+        ctx.fillStyle = '#1e1e1e';
       }
+      ctx.fillRect(0, 0, rect.width, rect.height);
 
-      function drawTextAndStickers() {
-        // Draw Text
-        const text = document.getElementById('frameText').innerText;
-        ctx.fillStyle = themeTextColors[selectedTheme] || '#333';
-        ctx.font = 'bold 20px sans-serif';
+      // Draw Header Text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px Georgia';
+      ctx.textAlign = 'center';
+      ctx.fillText(document.getElementById('frameHeader').innerText, rect.width / 2, 35);
+
+      // Draw Photos
+      const imgs = container.querySelectorAll('.render-grid img');
+      let loaded = 0;
+      if (imgs.length === 0) return finalize();
+
+      imgs.forEach((imgEl) => {
+        const imgRect = imgEl.getBoundingClientRect();
+        const x = imgRect.left - rect.left;
+        const y = imgRect.top - rect.top;
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, x, y, imgRect.width, imgRect.height);
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+          ctx.strokeRect(x, y, imgRect.width, imgRect.height);
+          loaded++;
+          if (loaded === imgs.length) finalize();
+        };
+        img.src = imgEl.src;
+      });
+
+      function finalize() {
+        // Draw Footer Text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(text, width / 2, height - 30);
+        ctx.fillText(document.getElementById('frameText').innerText, rect.width / 2, rect.height - 35);
+        ctx.font = '12px sans-serif';
+        ctx.fillText(document.getElementById('frameSubText').innerText, rect.width / 2, rect.height - 15);
 
         // Draw Stickers
         document.querySelectorAll('.draggable-sticker').forEach(st => {
-          const rect = st.getBoundingClientRect();
-          const parentRect = document.getElementById('frameCanvasContainer').getBoundingClientRect();
-          const relX = rect.left - parentRect.left;
-          const relY = rect.top - parentRect.top;
-          
-          ctx.font = '35px sans-serif';
-          ctx.fillText(st.innerText, relX + 17, relY + 30);
+          const stRect = st.getBoundingClientRect();
+          ctx.font = '32px sans-serif';
+          ctx.fillText(st.innerText, stRect.left - rect.left + 15, stRect.top - rect.top + 30);
         });
 
         callback(canvas);
@@ -561,7 +528,7 @@
     function exportImageJPG() {
       buildRenderCanvas((canvas) => {
         const link = document.createElement('a');
-        link.download = `LDR-Photobooth-${Date.now()}.jpg`;
+        link.download = `Photobooth-${Date.now()}.jpg`;
         link.href = canvas.toDataURL('image/jpeg', 0.95);
         link.click();
       });
@@ -572,15 +539,14 @@
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.addImage(imgData, 'PNG', 20, 10, 170, 0);
-        pdf.save(`LDR-Photobooth-${Date.now()}.pdf`);
+        pdf.addImage(imgData, 'PNG', 15, 10, 180, 0);
+        pdf.save(`Photobooth-${Date.now()}.pdf`);
       });
     }
 
     function renderStep(stepId) {
       document.querySelectorAll('.step-section').forEach(el => el.classList.remove('active'));
-      const activeEl = document.getElementById(stepId);
-      if (activeEl) activeEl.classList.add('active');
+      document.getElementById(stepId)?.classList.add('active');
     }
   </script>
 </body>
