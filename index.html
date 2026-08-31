@@ -8,53 +8,67 @@
   
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #1a1a24; color: #fff; margin: 0; padding: 20px; text-align: center; }
+    body { background: #121218; color: #fff; margin: 0; padding: 20px; text-align: center; }
     
-    .step-section { display: none; background: #252538; max-width: 900px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .step-section { display: none; background: #1e1e2d; max-width: 900px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
     .step-section.active { display: block; }
 
-    /* Theme Styles based on reference images */
-    .theme-midnight { 
-      background: linear-gradient(180deg, #020024 0%, #090979 35%, #00d4ff 100%);
+    /* 5 Themes based on user image references */
+    .theme-floral { 
+      background: linear-gradient(180deg, #0a1128 0%, #1c2541 100%);
+      color: #ffd1dc;
+      border: 8px solid #001427;
+      box-shadow: 0 0 20px rgba(255, 209, 220, 0.4);
+    }
+    .theme-gold { 
+      background: radial-gradient(circle, #2b261f 0%, #000000 100%);
+      color: #d4af37;
+      border: 8px solid #d4af37;
+      box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
+    }
+    .theme-redparty { 
+      background: linear-gradient(180deg, #800000 0%, #b30000 50%, #4a0000 100%);
       color: #ffffff;
-      border: 8px solid #ffffff;
-      box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+      border: 8px solid #ff4d4d;
+      box-shadow: 0 0 20px rgba(255, 77, 77, 0.5);
     }
-    .theme-cupid { 
-      background: radial-gradient(circle, #ffe6eb 0%, #ffb6c1 100%);
-      color: #d63031;
-      border: 8px solid #ffffff;
-      box-shadow: 0 0 20px rgba(255, 182, 193, 0.8);
+    .theme-birthday { 
+      background: #111111;
+      color: #ffffff;
+      border: 8px solid #333333;
     }
-    .theme-vintage { background: #d7ccc8; color: #4e342e; border: 8px solid #8d6e63; }
-    .theme-dark { background: #1e1e1e; color: #ffffff; border: 8px solid #333333; }
+    .theme-silvery2k { 
+      background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 50%, #cccccc 100%);
+      color: #111111;
+      border: 8px solid #ffffff;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    }
 
-    .theme-options { display: flex; justify-content: center; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
-    .theme-card { padding: 12px 20px; border-radius: 12px; cursor: pointer; border: 3px solid transparent; font-weight: bold; background: #34344e; color: #fff; transition: 0.2s; }
-    .theme-card.selected { border-color: #ff4757; transform: scale(1.05); background: #444466; }
+    .theme-options { display: flex; justify-content: center; gap: 12px; margin: 15px 0; flex-wrap: wrap; }
+    .theme-card { padding: 12px 18px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; font-weight: bold; background: #2a2a3d; color: #fff; transition: 0.2s; font-size: 14px; }
+    .theme-card.selected { border-color: #ff4757; transform: scale(1.05); background: #3b3b5c; }
 
-    /* Layout Selector Grid */
-    .layout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin: 15px 0; max-height: 400px; overflow-y: auto; padding: 10px; background: #1a1a24; border-radius: 12px; }
-    .layout-card { border: 2px solid #444; border-radius: 8px; padding: 10px; cursor: pointer; background: #2a2a3d; transition: 0.2s; display: flex; flex-direction: column; align-items: center; }
-    .layout-card:hover, .layout-card.selected { border-color: #2ed573; background: #3b3b5c; transform: translateY(-3px); }
-    .layout-icon { width: 60px; height: 80px; border: 1px solid #aaa; background: #111; display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; justify-content: center; align-content: center; margin-bottom: 5px; }
+    .layout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 15px 0; max-height: 350px; overflow-y: auto; padding: 10px; background: #121218; border-radius: 12px; }
+    .layout-card { border: 2px solid #333; border-radius: 8px; padding: 10px; cursor: pointer; background: #252538; transition: 0.2s; display: flex; flex-direction: column; align-items: center; }
+    .layout-card:hover, .layout-card.selected { border-color: #2ed573; background: #32324e; transform: translateY(-2px); }
+    .layout-icon { width: 50px; height: 70px; border: 1px solid #777; background: #000; display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; justify-content: center; align-content: center; margin-bottom: 5px; }
     .layout-box { background: #fff; border-radius: 1px; }
 
-    .btn { padding: 12px 28px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.3s; margin: 5px; }
+    .btn { padding: 12px 26px; font-size: 16px; font-weight: bold; background: #ff4757; color: white; border: none; border-radius: 25px; cursor: pointer; transition: 0.3s; margin: 5px; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
-    .btn:disabled { background: #555 !important; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .btn:disabled { background: #444 !important; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
     
-    input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #444; background: #1a1a24; color: #fff; margin: 10px; text-align: center; }
+    input, select { padding: 10px 15px; font-size: 16px; border-radius: 10px; border: 1px solid #444; background: #121218; color: #fff; margin: 10px; text-align: center; }
 
     .camera-container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
-    video, .partner-preview { width: 320px; height: 240px; background: #000; border-radius: 15px; object-fit: cover; border: 2px solid #555; }
+    video, .partner-preview { width: 320px; height: 240px; background: #000; border-radius: 15px; object-fit: cover; border: 2px solid #444; }
     video { transform: scaleX(-1); }
 
     #countdown { font-size: 64px; font-weight: bold; color: #ff4757; height: 80px; }
 
     #frameCanvasContainer { display: inline-block; padding: 25px; border-radius: 10px; position: relative; margin: 20px 0; min-width: 320px; }
     .render-grid { display: grid; gap: 8px; justify-content: center; margin: 15px 0; }
-    .render-grid img { object-fit: cover; border: 3px solid #fff; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+    .render-grid img { object-fit: cover; border: 2px solid #fff; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
 
     .sticker-palette { display: flex; justify-content: center; gap: 15px; font-size: 30px; margin: 15px 0; }
     .sticker-palette span { cursor: pointer; transition: 0.2s; user-select: none; }
@@ -69,16 +83,16 @@
 </head>
 <body>
 
-  <h1>✨ LDR Photobooth Studio</h1>
+  <h1>📷 LDR Photobooth Studio</h1>
 
   <!-- STEP 0 -->
   <div id="step0" class="step-section active">
     <h2>เข้าใช้งานตู้ถ่ายรูปคู่ online</h2>
-    <p>สร้างห้องใหม่ หรือใส่รหัสห้องเพื่อถ่ายรูปคู่กับแฟน</p>
+    <p>สร้างห้องใหม่ หรือกรอกรหัสห้องจากแฟนเพื่อถ่ายรูปคู่กัน</p>
     <div>
       <button type="button" class="btn" onclick="createRoom()">✨ สร้างห้องถ่ายรูปใหม่</button>
     </div>
-    <hr style="margin: 20px 0; border: none; border-top: 1px solid #444;">
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #333;">
     <div>
       <input type="text" id="roomInput" placeholder="กรอกรหัสห้อง (เช่น 1234)" maxlength="4">
       <button type="button" class="btn" style="background: #2ed573;" onclick="joinCustomRoom()">เข้าร่วมห้อง</button>
@@ -93,20 +107,19 @@
     <div><b>รหัสห้องของคุณ:</b> <span id="roomDisplay" class="room-code-display">----</span></div>
     <button type="button" class="btn" style="background: #70a1ff; padding: 6px 16px; font-size: 14px;" onclick="copyLink()">🔗 คัดลอกลิงก์ส่งให้แฟน</button>
 
-    <h3 style="margin-top:20px; text-align:left;">📐 เลือกรูปแบบเลย์เอาต์ (Layout Catalogue):</h3>
-    <div class="layout-grid" id="layoutGrid">
-      <!-- Generated Layout Options -->
-    </div>
+    <h3 style="margin-top:20px; text-align:left;">📐 เลือกรูปแบบเลย์เอาต์ (Catalogue):</h3>
+    <div class="layout-grid" id="layoutGrid"></div>
 
     <h3 style="text-align:left;">🎨 เลือกสไตล์ธีมกรอบรูป:</h3>
     <div class="theme-options">
-      <div class="theme-card theme-midnight selected" onclick="selectTheme('theme-midnight')">🌌 Midnight Anniversary</div>
-      <div class="theme-card theme-cupid" onclick="selectTheme('theme-cupid')">💘 Cupid Pink Heart</div>
-      <div class="theme-card theme-vintage" onclick="selectTheme('theme-vintage')">🤎 Vintage Classic</div>
-      <div class="theme-card theme-dark" onclick="selectTheme('theme-dark')">🖤 Minimal Dark</div>
+      <div class="theme-card theme-floral selected" onclick="selectTheme('theme-floral')">🌸 Floral Wedding</div>
+      <div class="theme-card theme-gold" onclick="selectTheme('theme-gold')">🥂 Gold Celebration</div>
+      <div class="theme-card theme-redparty" onclick="selectTheme('theme-redparty')">🎉 Red Party</div>
+      <div class="theme-card theme-birthday" onclick="selectTheme('theme-birthday')">🎈 Black Birthday</div>
+      <div class="theme-card theme-silvery2k" onclick="selectTheme('theme-silvery2k')">🤍 Silver Y2K</div>
     </div>
 
-    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px; margin-top:20px;" onclick="goToStep2()" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
+    <button type="button" id="nextStepBtn" class="btn" style="background: #2ed573; font-size: 18px; margin-top:15px;" onclick="goToStep2()" disabled>⏳ รอนัดเข้าห้องครบ 2 คนเพื่อเริ่มถ่ายรูป</button>
   </div>
 
   <!-- STEP 2 -->
@@ -121,7 +134,7 @@
       </div>
       <div>
         <h3>แฟน</h3>
-        <img id="partnerImg" class="partner-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='240' viewBox='0 0 320 240'><rect width='100%' height='100%' fill='%23222222'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-size='16'>Waiting for partner...</text></svg>" />
+        <img id="partnerImg" class="partner-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='240' viewBox='0 0 320 240'><rect width='100%' height='100%' fill='%23111111'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23777777' font-size='15'>Connecting camera...</text></svg>" />
       </div>
     </div>
 
@@ -134,26 +147,25 @@
   <!-- STEP 3 -->
   <div id="step3" class="step-section">
     <h2>3. ตกแต่ง & ดาวน์โหลดรูปคู่</h2>
-    <p>ใส่สติ๊กเกอร์และข้อความน่ารักๆ ตกแต่งการ์ดร่วมกันได้เลย!</p>
+    <p>ใส่สติ๊กเกอร์และพิมพ์ข้อความตกแต่งร่วมกันสดๆ ได้เลย!</p>
 
     <div class="sticker-palette">
       <span onclick="sendSticker('❤️')">❤️</span>
       <span onclick="sendSticker('✨')">✨</span>
       <span onclick="sendSticker('🌸')">🌸</span>
-      <span onclick="sendSticker('🐻')">🐻</span>
-      <span onclick="sendSticker('🎀')">🎀</span>
+      <span onclick="sendSticker('🥂')">🥂</span>
       <span onclick="sendSticker('👑')">👑</span>
+      <span onclick="sendSticker('🎀')">🎀</span>
     </div>
 
     <div>
-      <input type="text" id="textInput" placeholder="Happy Anniversary..." oninput="sendTextChange(this.value)" style="width: 280px;">
+      <input type="text" id="textInput" placeholder="Happy Birthday / Anniversary..." oninput="sendTextChange(this.value)" style="width: 280px;">
     </div>
 
-    <!-- Container Rendering Photostrip -->
-    <div id="frameCanvasContainer" class="theme-midnight">
-      <div id="frameHeader" style="font-family:'Georgia', serif; font-size:22px; font-weight:bold; margin-bottom:10px;">HAPPY Anniversary</div>
+    <div id="frameCanvasContainer" class="theme-floral">
+      <div id="frameHeader" style="font-family:'Georgia', serif; font-size:22px; font-weight:bold; margin-bottom:10px;">HAPPY ANNIVERSARY</div>
       <div id="photoGrid" class="render-grid"></div>
-      <div id="frameText" style="font-size:18px; font-weight:bold; margin-top:10px;">Maria & Philipe</div>
+      <div id="frameText" style="font-size:18px; font-weight:bold; margin-top:10px;">Jessica & Elliot</div>
       <div id="frameSubText" style="font-size:12px; opacity:0.8;">25-10-2026</div>
     </div>
 
@@ -167,15 +179,14 @@
   <script>
     const socket = io();
     let currentRoomId = "";
-    let selectedLayout = 1; // Default: 2x6 3 Shots
-    let selectedTheme = "theme-midnight";
+    let selectedLayout = 1; 
+    let selectedTheme = "theme-floral";
     let myPhotos = [];
     let partnerPhotos = [];
     let currentSlot = 0;
     let streamInterval = null;
     let isSendingFrame = false;
 
-    // 11 Layout Configurations from catalogue
     const layoutConfigs = {
       1: { name: "1. 2x6 (3 Shots)", slots: 3, cols: 1, w: 220, h: 140 },
       2: { name: "2. 2x6 (4 Shots)", slots: 4, cols: 1, w: 220, h: 110 },
@@ -195,7 +206,6 @@
     const snapBtn = document.getElementById('snapBtn');
     const countdownEl = document.getElementById('countdown');
 
-    // Build Catalogue Grid
     const layoutGridEl = document.getElementById('layoutGrid');
     Object.keys(layoutConfigs).forEach(id => {
       const cfg = layoutConfigs[id];
@@ -205,9 +215,9 @@
       card.id = `layout-card-${id}`;
       card.innerHTML = `
         <div class="layout-icon">
-          ${'<div class="layout-box" style="width:100%;height:15px;"></div>'.repeat(Math.min(cfg.slots, 4))}
+          ${'<div class="layout-box" style="width:100%;height:12px;"></div>'.repeat(Math.min(cfg.slots, 4))}
         </div>
-        <div style="font-size:12px; font-weight:bold;">${cfg.name}</div>
+        <div style="font-size:11px; font-weight:bold;">${cfg.name}</div>
       `;
       layoutGridEl.appendChild(card);
     });
@@ -244,7 +254,9 @@
 
     function initCamera() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 360 } } })
+        navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 240 } } 
+        })
         .then(stream => { myVideo.srcObject = stream; startLiveStreaming(); })
         .catch(() => {
           navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { myVideo.srcObject = stream; startLiveStreaming(); });
@@ -252,20 +264,21 @@
       }
     }
 
+    // Optimization to fix partner camera not loading
     function startLiveStreaming() {
       if (streamInterval) clearInterval(streamInterval);
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 320; tempCanvas.height = 240;
+      tempCanvas.width = 160; tempCanvas.height = 120;
       const ctx = tempCanvas.getContext('2d');
 
       streamInterval = setInterval(() => {
         if (myVideo.readyState === myVideo.HAVE_ENOUGH_DATA && !isSendingFrame && socket.connected) {
           isSendingFrame = true;
-          ctx.drawImage(myVideo, 0, 0, 320, 240);
-          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.5));
-          setTimeout(() => { isSendingFrame = false; }, 200);
+          ctx.drawImage(myVideo, 0, 0, 160, 120);
+          socket.emit('stream-frame', tempCanvas.toDataURL('image/jpeg', 0.3));
+          setTimeout(() => { isSendingFrame = false; }, 300);
         }
-      }, 200);
+      }, 300);
     }
 
     socket.on('receive-partner-stream', (frameData) => { partnerImg.src = frameData; });
@@ -368,9 +381,9 @@
 
     function captureFrame() {
       const canvas = document.createElement('canvas');
-      canvas.width = 640; canvas.height = 480;
-      canvas.getContext('2d').drawImage(myVideo, 0, 0, 640, 480);
-      return canvas.toDataURL('image/jpeg', 0.85);
+      canvas.width = 480; canvas.height = 360;
+      canvas.getContext('2d').drawImage(myVideo, 0, 0, 480, 360);
+      return canvas.toDataURL('image/jpeg', 0.8);
     }
 
     socket.on('receive-partner-photos', (photos) => {
@@ -399,7 +412,7 @@
         const img = document.createElement('img');
         img.style.width = `${config.w}px`;
         img.style.height = `${config.h}px`;
-        img.src = allPhotos[i] || myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23333"/></svg>';
+        img.src = allPhotos[i] || myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23222"/></svg>';
         grid.appendChild(img);
       }
     }
@@ -419,7 +432,7 @@
     function sendTextChange(val) { socket.emit('update-frame-text', val); }
 
     socket.on('frame-text-updated', (text) => {
-      document.getElementById('frameText').innerText = text || "HAPPY Anniversary";
+      document.getElementById('frameText').innerText = text || "Jessica & Elliot";
     });
 
     function makeDraggable(elmnt) {
@@ -465,23 +478,29 @@
       const ctx = canvas.getContext('2d');
       ctx.scale(2, 2);
 
-      // Background Style
-      if (selectedTheme === 'theme-midnight') {
+      // Render Themes Background
+      if (selectedTheme === 'theme-floral') {
         const grad = ctx.createLinearGradient(0, 0, 0, rect.height);
-        grad.addColorStop(0, '#020024'); grad.addColorStop(0.5, '#090979'); grad.addColorStop(1, '#00d4ff');
+        grad.addColorStop(0, '#0a1128'); grad.addColorStop(1, '#1c2541');
         ctx.fillStyle = grad;
-      } else if (selectedTheme === 'theme-cupid') {
-        ctx.fillStyle = '#ffb6c1';
-      } else if (selectedTheme === 'theme-vintage') {
-        ctx.fillStyle = '#d7ccc8';
+      } else if (selectedTheme === 'theme-gold') {
+        const grad = ctx.createRadialGradient(rect.width/2, rect.height/2, 10, rect.width/2, rect.height/2, rect.width);
+        grad.addColorStop(0, '#2b261f'); grad.addColorStop(1, '#000000');
+        ctx.fillStyle = grad;
+      } else if (selectedTheme === 'theme-redparty') {
+        const grad = ctx.createLinearGradient(0, 0, 0, rect.height);
+        grad.addColorStop(0, '#800000'); grad.addColorStop(0.5, '#b30000'); grad.addColorStop(1, '#4a0000');
+        ctx.fillStyle = grad;
+      } else if (selectedTheme === 'theme-silvery2k') {
+        ctx.fillStyle = '#e0e0e0';
       } else {
-        ctx.fillStyle = '#1e1e1e';
+        ctx.fillStyle = '#111111';
       }
       ctx.fillRect(0, 0, rect.width, rect.height);
 
       // Draw Header Text
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px Georgia';
+      ctx.fillStyle = selectedTheme === 'theme-silvery2k' ? '#111111' : '#ffffff';
+      ctx.font = 'bold 20px Georgia';
       ctx.textAlign = 'center';
       ctx.fillText(document.getElementById('frameHeader').innerText, rect.width / 2, 35);
 
@@ -497,7 +516,7 @@
         const img = new Image();
         img.onload = () => {
           ctx.drawImage(img, x, y, imgRect.width, imgRect.height);
-          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
           ctx.strokeRect(x, y, imgRect.width, imgRect.height);
           loaded++;
           if (loaded === imgs.length) finalize();
@@ -507,7 +526,7 @@
 
       function finalize() {
         // Draw Footer Text
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = selectedTheme === 'theme-silvery2k' ? '#111111' : '#ffffff';
         ctx.font = 'bold 18px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(document.getElementById('frameText').innerText, rect.width / 2, rect.height - 35);
