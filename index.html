@@ -13,7 +13,7 @@
     .step-section { display: none; background: #1e1e2d; max-width: 900px; margin: 0 auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
     .step-section.active { display: block; }
 
-    /* 5 Themes based on user image references */
+    /* Themes */
     .theme-floral { 
       background: linear-gradient(180deg, #0a1128 0%, #1c2541 100%);
       color: #ffd1dc;
@@ -107,7 +107,7 @@
     <div><b>รหัสห้องของคุณ:</b> <span id="roomDisplay" class="room-code-display">----</span></div>
     <button type="button" class="btn" style="background: #70a1ff; padding: 6px 16px; font-size: 14px;" onclick="copyLink()">🔗 คัดลอกลิงก์ส่งให้แฟน</button>
 
-    <h3 style="margin-top:20px; text-align:left;">📐 เลือกรูปแบบเลย์เอาต์ (Catalogue):</h3>
+    <h3 style="margin-top:20px; text-align:left;">📐 เลือกรูปแบบเลย์เอาต์ (จัดรูปแบบคู่ 2 ช่องขนานกันทุกแผ่น):</h3>
     <div class="layout-grid" id="layoutGrid"></div>
 
     <h3 style="text-align:left;">🎨 เลือกสไตล์ธีมกรอบรูป:</h3>
@@ -187,18 +187,19 @@
     let streamInterval = null;
     let isSendingFrame = false;
 
+    // Configured layout so all options are Side-by-Side (2 columns)
     const layoutConfigs = {
-      1: { name: "1. 2x6 (3 Shots)", slots: 3, cols: 1, w: 220, h: 140 },
-      2: { name: "2. 2x6 (4 Shots)", slots: 4, cols: 1, w: 220, h: 110 },
-      3: { name: "3. 4x6 Double Strip", slots: 6, cols: 2, w: 140, h: 105 },
-      4: { name: "4. 4x6 Single Shot", slots: 1, cols: 1, w: 300, h: 225 },
-      5: { name: "5. 4x6 Landscape", slots: 1, cols: 1, w: 320, h: 200 },
-      6: { name: "6. 4x6 Mirror 3 shot", slots: 3, cols: 3, w: 100, h: 140 },
-      7: { name: "7. 4x6 Photo Print A", slots: 3, cols: 2, w: 140, h: 100 },
-      8: { name: "8. 4x6 Photo Print B", slots: 3, cols: 2, w: 140, h: 100 },
-      9: { name: "9. 4x6 Gallery Print", slots: 4, cols: 3, w: 95, h: 80 },
-      10: { name: "10. 4x6 3 Shots Mirror", slots: 3, cols: 2, w: 130, h: 110 },
-      11: { name: "11. 4x6 4 Shots Mirror", slots: 4, cols: 2, w: 130, h: 100 }
+      1: { name: "1. 2xPair Strip (2 แถวคู่)", shots: 2, cols: 2, w: 140, h: 105 },
+      2: { name: "2. 3xPair Strip (3 แถวคู่)", shots: 3, cols: 2, w: 140, h: 100 },
+      3: { name: "3. 4xPair Strip (4 แถวคู่)", shots: 4, cols: 2, w: 130, h: 90 },
+      4: { name: "4. 4x6 Couple 1 Shot", shots: 1, cols: 2, w: 150, h: 200 },
+      5: { name: "5. 4x6 Landscape Couple", shots: 1, cols: 2, w: 160, h: 120 },
+      6: { name: "6. 4x6 Mirror Pair (3 แถวคู่)", shots: 3, cols: 2, w: 140, h: 95 },
+      7: { name: "7. 4x6 Photo Print (2 แถวคู่)", shots: 2, cols: 2, w: 140, h: 105 },
+      8: { name: "8. 4x6 Photo Print (3 แถวคู่)", shots: 3, cols: 2, w: 140, h: 95 },
+      9: { name: "9. 4x6 Gallery Pair (4 แถวคู่)", shots: 4, cols: 2, w: 130, h: 85 },
+      10: { name: "10. 4x6 3 Shots Mirror Pair", shots: 3, cols: 2, w: 130, h: 95 },
+      11: { name: "11. 4x6 4 Shots Mirror Pair", shots: 4, cols: 2, w: 130, h: 85 }
     };
 
     const myVideo = document.getElementById('myVideo');
@@ -215,7 +216,7 @@
       card.id = `layout-card-${id}`;
       card.innerHTML = `
         <div class="layout-icon">
-          ${'<div class="layout-box" style="width:100%;height:12px;"></div>'.repeat(Math.min(cfg.slots, 4))}
+          ${'<div class="layout-box" style="width:45%;height:10px;"></div><div class="layout-box" style="width:45%;height:10px;"></div>'.repeat(Math.min(cfg.shots, 4))}
         </div>
         <div style="font-size:11px; font-weight:bold;">${cfg.name}</div>
       `;
@@ -264,7 +265,6 @@
       }
     }
 
-    // Optimization to fix partner camera not loading
     function startLiveStreaming() {
       if (streamInterval) clearInterval(streamInterval);
       const tempCanvas = document.createElement('canvas');
@@ -355,9 +355,9 @@
     });
 
     function captureSequence() {
-      const totalSlots = layoutConfigs[selectedLayout].slots;
-      if (currentSlot < totalSlots) {
-        document.getElementById('slotProgress').innerText = `รูปที่ ${currentSlot + 1} / ${totalSlots}`;
+      const totalShots = layoutConfigs[selectedLayout].shots;
+      if (currentSlot < totalShots) {
+        document.getElementById('slotProgress').innerText = `ช็อตที่ ${currentSlot + 1} / ${totalShots}`;
         let count = 3;
         countdownEl.innerText = count;
 
@@ -391,29 +391,33 @@
       renderPhotostrip();
     });
 
+    // Side-by-Side rendering logic (Row by Row)
     function renderPhotostrip() {
       const container = document.getElementById('frameCanvasContainer');
       const grid = document.getElementById('photoGrid');
       const config = layoutConfigs[selectedLayout];
 
       container.className = selectedTheme;
-      grid.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
+      grid.style.gridTemplateColumns = `repeat(2, 1fr)`; // Always 2 columns for pair
       grid.innerHTML = "";
       document.querySelectorAll('.draggable-sticker').forEach(st => st.remove());
 
-      const allPhotos = [];
-      for(let i = 0; i < config.slots; i++) {
-        if(myPhotos[i]) allPhotos.push(myPhotos[i]);
-        if(partnerPhotos[i]) allPhotos.push(partnerPhotos[i]);
-      }
+      const fallbackImg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23222"/></svg>';
 
-      const totalRender = Math.max(config.slots, allPhotos.length);
-      for (let i = 0; i < totalRender; i++) {
-        const img = document.createElement('img');
-        img.style.width = `${config.w}px`;
-        img.style.height = `${config.h}px`;
-        img.src = allPhotos[i] || myPhotos[i] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="100%" height="100%" fill="%23222"/></svg>';
-        grid.appendChild(img);
+      for (let i = 0; i < config.shots; i++) {
+        // User photo (Left)
+        const imgLeft = document.createElement('img');
+        imgLeft.style.width = `${config.w}px`;
+        imgLeft.style.height = `${config.h}px`;
+        imgLeft.src = myPhotos[i] || fallbackImg;
+        grid.appendChild(imgLeft);
+
+        // Partner photo (Right)
+        const imgRight = document.createElement('img');
+        imgRight.style.width = `${config.w}px`;
+        imgRight.style.height = `${config.h}px`;
+        imgRight.src = partnerPhotos[i] || fallbackImg;
+        grid.appendChild(imgRight);
       }
     }
 
@@ -467,7 +471,6 @@
       if (el) { el.style.left = data.left; el.style.top = data.top; }
     });
 
-    // High-Resolution Direct Canvas Downloader
     function buildRenderCanvas(callback) {
       const container = document.getElementById('frameCanvasContainer');
       const canvas = document.createElement('canvas');
@@ -478,7 +481,6 @@
       const ctx = canvas.getContext('2d');
       ctx.scale(2, 2);
 
-      // Render Themes Background
       if (selectedTheme === 'theme-floral') {
         const grad = ctx.createLinearGradient(0, 0, 0, rect.height);
         grad.addColorStop(0, '#0a1128'); grad.addColorStop(1, '#1c2541');
@@ -498,13 +500,11 @@
       }
       ctx.fillRect(0, 0, rect.width, rect.height);
 
-      // Draw Header Text
       ctx.fillStyle = selectedTheme === 'theme-silvery2k' ? '#111111' : '#ffffff';
       ctx.font = 'bold 20px Georgia';
       ctx.textAlign = 'center';
       ctx.fillText(document.getElementById('frameHeader').innerText, rect.width / 2, 35);
 
-      // Draw Photos
       const imgs = container.querySelectorAll('.render-grid img');
       let loaded = 0;
       if (imgs.length === 0) return finalize();
@@ -525,7 +525,6 @@
       });
 
       function finalize() {
-        // Draw Footer Text
         ctx.fillStyle = selectedTheme === 'theme-silvery2k' ? '#111111' : '#ffffff';
         ctx.font = 'bold 18px sans-serif';
         ctx.textAlign = 'center';
@@ -533,7 +532,6 @@
         ctx.font = '12px sans-serif';
         ctx.fillText(document.getElementById('frameSubText').innerText, rect.width / 2, rect.height - 15);
 
-        // Draw Stickers
         document.querySelectorAll('.draggable-sticker').forEach(st => {
           const stRect = st.getBoundingClientRect();
           ctx.font = '32px sans-serif';
