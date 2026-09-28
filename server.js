@@ -9,7 +9,12 @@ const server = http.createServer(app);
 const io = new Server(server, { 
   maxHttpBufferSize: 1e7,
   pingTimeout: 30000,
-  pingInterval: 10000
+  pingInterval: 10000,
+  // เฟรมภาพเป็น JPEG (บีบอัดแล้ว) การเปิด per-message-deflate จะเสีย CPU/เวลาไปบีบอัดซ้ำโดยไม่ได้อะไร
+  // และเป็นสาเหตุหนึ่งของความหน่วงที่สะสมขึ้นเรื่อยๆ บนคอนเนกชันที่ latency สูงแบบ LDR
+  perMessageDeflate: false,
+  // ตัด long-polling fallback ออก ให้ต่อผ่าน websocket ทางเดียว ลด overhead การ handshake/upgrade
+  transports: ['websocket']
 });
 
 app.use(express.static(__dirname));
@@ -56,7 +61,7 @@ io.on('connection', (socket) => {
   // ส่งสตรีมภาพกล้องให้แฟน
   socket.on('stream-frame', (frameData) => {
     if (socket.roomId) {
-      socket.to(socket.roomId).emit('receive-partner-stream', frameData);
+      socket.to(socket.roomId).volatile.emit('receive-partner-stream', frameData);
     }
   });
 
