@@ -48,6 +48,7 @@ io.on('connection', (socket) => {
       socket.leave(socket.roomId);
     }
 
+    const alreadyIn = socket.rooms.has(roomId);
     socket.join(roomId);
     socket.roomId = roomId;
 
@@ -56,13 +57,15 @@ io.on('connection', (socket) => {
     }
 
     updateRoomState(roomId);
+
+    // ครบ 2 คน -> ให้คนที่อยู่ในห้องก่อนเริ่มเชื่อมต่อ WebRTC
+    const room = io.sockets.adapter.rooms.get(roomId);
+    if (!alreadyIn && room && room.size === 2) socket.to(roomId).emit('start-call');
   });
 
-  // ส่งสตรีมภาพกล้องให้แฟน
-  socket.on('stream-frame', (frameData) => {
-    if (socket.roomId) {
-      socket.to(socket.roomId).volatile.emit('receive-partner-stream', frameData);
-    }
+  // Signaling สำหรับ WebRTC (วิดีโอจริงจะวิ่งตรงระหว่างสองเครื่อง ไม่ผ่านเซิร์ฟเวอร์)
+  socket.on('webrtc-signal', (data) => {
+    if (socket.roomId) socket.to(socket.roomId).emit('webrtc-signal', data);
   });
 
   socket.on('change-step', (stepId) => {
